@@ -1,9 +1,12 @@
+[<img src="https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/vscode.svg" alt="VS Code logo" width="50" height="50">](https://code.visualstudio.com)   &nbsp;   [<img src="https://cdn.platformio.org/images/platformio-logo-xs.fd6e881d.png" alt="PlatformIO logo" height="50">](https://platformio.org) &nbsp; [<img src="https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/ESP32-S3.png" alt="PlatformIO logo" height="50">](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)
+
 >Firmware is based on this VS Code / Platformio ESP32-S3 Project
+
+>find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
+>[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.0
 >
->find the actual compiled Firmware for OTA upload (Board Setup on the Config Portal) here:
->[actual Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware)
->
->**If you are using LORA please choose the right Firmware for your location/lora module**
+>**If you are using LORA please choose the right Firmware for your location / lora module**
+>and you have to enter your credentials for LoRa on the Config Portal
 
 # TeleAgriCulture Board V2.1
 
