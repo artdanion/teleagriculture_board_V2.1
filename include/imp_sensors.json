@@ -104,9 +104,9 @@
     "returnCount": 1,
     "measurements": [
       {
-        "value": 300,
+        "value": 80,
         "valueOrder": "MOIS",
-        "unit": ".",
+        "unit": "%",
         "data_name": "mois"
       }
     ]

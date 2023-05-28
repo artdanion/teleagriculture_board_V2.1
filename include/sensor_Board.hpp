@@ -61,6 +61,8 @@ bool useNTP = false;
 bool useCustomNTP = false;
 bool loraChanged = false;
 
+int upload_interval = 60;
+
 String upload = "WIFI";
 String anonym = "anonymus@example.com";
 String user_CA = "-----BEGIN CERTIFICATE----- optional -----END CERTIFICATE-----";
@@ -75,9 +77,9 @@ const int SSL_PORT = 443;
 const unsigned long TIMEOUT = 2500;
 
 static osjob_t sendjob;
-uint8_t dev_eui[8]={ 0, 0, 0, 0, 0, 0, 0, 0 };
-uint8_t app_eui[8]={ 0, 0, 0, 0, 0, 0, 0, 0 };
-uint8_t app_key[16]={ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+uint8_t dev_eui[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t app_eui[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t app_key[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Saves the LMIC structure during DeepSleep
 RTC_DATA_ATTR lmic_t RTC_LMIC;
@@ -354,9 +356,9 @@ const char *proto_sensors = R"([
     "returnCount": 1,
     "measurements": [
       {
-        "value": 300,
+        "value": 80,
         "valueOrder": "MOIS",
-        "unit": ".",
+        "unit": "%",
         "data_name": "mois"
       }
     ]

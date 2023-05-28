@@ -211,7 +211,7 @@ void readI2C_Connectors()
             Sensor newSensor = allSensors[BMP_280];
             newSensor.measurements[0].value = bmp280.getTemperature();
             pressure = bmp280.getPressure();
-            newSensor.measurements[1].value = (double)(pressure/100.00F);
+            newSensor.measurements[1].value = (double)(pressure / 100.00F);
             newSensor.measurements[2].value = bmp280.calAltitude(pressure);
 
             sensorVector.push_back(newSensor);
@@ -249,7 +249,7 @@ void readI2C_Connectors()
             newSensor.measurements[0].value = bme.readHumidity();
             newSensor.measurements[1].value = bme.readTemperature();
             newSensor.measurements[2].value = (bme.readPressure() / 100.0F);
-            newSensor.measurements[3].value =bme.readAltitude(SEALEVELPRESSURE_HPA);
+            newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
             sensorVector.push_back(newSensor);
         }
         break;
@@ -440,8 +440,13 @@ void readADC_Connectors()
 
             pinMode(cap_SoilPin, INPUT);
 
+            const int AirValue = 2963;
+            const int WaterValue = 1044;
+            int soilmoisturepercent = 0;
+            soilmoisturepercent = map(analogRead(cap_SoilPin), AirValue, WaterValue, 0, 100);
+
             Sensor newSensor = allSensors[CAP_SOIL];
-            newSensor.measurements[0].value = analogRead(cap_SoilPin);
+            newSensor.measurements[0].value = soilmoisturepercent;
 
             sensorVector.push_back(newSensor);
         }
