@@ -20,6 +20,7 @@ adc_2: -1
 onewire_2: -1
 adc_3: -1
 onewire_3: 7
+upload_interval: 60
 system-time: 1970-01-01T01:07
 timezone: 810
 set-time: 2023-04-01T09:45
@@ -206,8 +207,8 @@ namespace WiFiManagerNS
     TimeConfHTML += getTemplate(HTML_STYLE);
 
     // CERT form
-    //TimeConfHTML += "<style>input[type='checkbox'][name='use-WPA_enterprise']:not(:checked)~.enterprise { display: none; }";
-    //TimeConfHTML += "input[type='checkbox'][name='use-WPA_enterprise']:checked~.enterprise {display: block;}</style>";
+    // TimeConfHTML += "<style>input[type='checkbox'][name='use-WPA_enterprise']:not(:checked)~.enterprise { display: none; }";
+    // TimeConfHTML += "input[type='checkbox'][name='use-WPA_enterprise']:checked~.enterprise {display: block;}</style>";
 
     TimeConfHTML += getTemplate(HTML_HEAD_END);
     TimeConfHTML.replace(FPSTR(T_c), "invert"); // add class str
@@ -228,11 +229,11 @@ namespace WiFiManagerNS
 
     if (useBattery)
     {
-      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1' checked /><label for='battery'> powerd by battery</label><br><br>";
+      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1' checked /><label for='battery'> powerd by battery</label><br>";
     }
     else
     {
-      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1'/><label for='battery'> powerd by battery</label><br><br>";
+      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1'/><label for='battery'> powerd by battery</label><br>";
     }
 
     if (useDisplay)
@@ -244,16 +245,24 @@ namespace WiFiManagerNS
       TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1'/><label for='display'> show display</label>";
     }
 
+    TimeConfHTML += "<BR><BR><label for='up_interval'>Upload Interval:</label>";
+    TimeConfHTML += "<select id='up_interval' name='up_interval'>";
+    TimeConfHTML += "<option value=2>2 min</option>";
+    TimeConfHTML += "<option value=10>10 min</option>";
+    TimeConfHTML += "<option value=30>30 min</option>";
+    TimeConfHTML += "<option value=60>60 min</option>";
+    TimeConfHTML += "</select><br>";
+
     TimeConfHTML += "</div><BR><div><BR>";
 
     TimeConfHTML += "<b>WiFi Upload Data</b>";
     TimeConfHTML += "<div><label for='BoardID'>Board ID:</label><input type='text' id='BoardID' name='BoardID' pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=" + String(boardID) + " required>";
     TimeConfHTML += "<label for='API_KEY'>API KEY:</label><input type='text' name='API_KEY' pattern='^[A-Za-z0-9]{32}$' title=' Enter Bearer token' value=" + API_KEY + " required>";
-    
+
     // CERT form
-    //TimeConfHTML += "<br><br><label for='use-WPA_enterprise'>Enable WPA enterprise / Eduroam </label><input value='1' type='checkbox' name='use-WPA_enterprise' id='use-WPA_enterprise'><br>";
-    //TimeConfHTML += "<div class='enterprise'><label for='ANONYMUS'>Anonymus ID</label><input type='email' name='ANONYMUS' title='Enter anonym id' value=" + anonym + " required>";
-    //TimeConfHTML += "<br><br><label for='certificate'>Please paste your CA server certificate here:</label><textarea id='certificate' name='certificate' rows='23' cols='63' placeholder='-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----'></textarea></div></div>";
+    // TimeConfHTML += "<br><br><label for='use-WPA_enterprise'>Enable WPA enterprise / Eduroam </label><input value='1' type='checkbox' name='use-WPA_enterprise' id='use-WPA_enterprise'><br>";
+    // TimeConfHTML += "<div class='enterprise'><label for='ANONYMUS'>Anonymus ID</label><input type='email' name='ANONYMUS' title='Enter anonym id' value=" + anonym + " required>";
+    // TimeConfHTML += "<br><br><label for='certificate'>Please paste your CA server certificate here:</label><textarea id='certificate' name='certificate' rows='23' cols='63' placeholder='-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----'></textarea></div></div>";
     TimeConfHTML += "<div id='Lora' style='display:none'><br><BR><b>LoRa TTN Data</b>";
 
     TimeConfHTML += "<BR><strong>" + lora_fqz + "</strong><BR><BR>";
@@ -595,6 +604,12 @@ namespace WiFiManagerNS
     else
     {
       useDisplay = false;
+    }
+
+    if (_wifiManager->server->hasArg("up_interval"))
+    {
+      String upInterval=_wifiManager->server->arg("up_interval");
+      upload_interval = atoi(upInterval.c_str());
     }
 
     if (_wifiManager->server->hasArg("upload"))

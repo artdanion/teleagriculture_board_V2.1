@@ -47,23 +47,42 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 - WS2812: An RGB LED strip - <mark>not implemented now.<mark>
 - SERVO: A servo motor -<mark>not implemented now.<mark>
 - BME_280: A temperature, humidity and pressure sensor. <mark>BME280_ADDRESS_ALTERNATE (0x76) is used<mark>
+- SOUND: Gravity analog Sound level meter
+
+- ADS1115: for KlimaOasis aquaponic system a 4-channel ADC is added
+- - ADC0: https://wiki.dfrobot.com/Gravity_Analog_ORP_Sensor_PRO_SKU_SEN0464
+- - ADC1: https://wiki.dfrobot.com/Gravity__Analog_Dissolved_Oxygen_Sensor_SKU_SEN0237
+- - ADC2: https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K=1__SKU_DFR0300
+- - ADC3: https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
+
+
 
 Each sensor has its own library and reading code in the `include/sensor_Read.hpp` file. The data from the sensors is stored in the `sensorVector` and can be accessed using the `sensorVector[i].measurements[j].value` syntax.
 
 New sensors can be added by following the steps outlined in the [Adding new sensors](#adding-new-sensors) section.
 
-## Adding new sensors
+## Adding New Sensors
 
-To add a new sensor to the teleAgriCulture Board V2.1, follow these steps:
+To add new sensors, follow these steps:
 
-1. Connect the sensor to the board according to its datasheet and the board's pinout.
-2. Include the library for the sensor in the `include/sensor_Read.hpp` file.
-3. Add the sensor to the `const char *proto_sensors` prototype class in JSON format in the `include/sensor_Board.hpp` file.
-4. Add the sensor to the `SensorsImplemented` enum in `include/sensor_Board.hpp`.
-5. Add the sensor reading code to one of the following functions in the `include/sensor_Read.hpp` file: `readI2C_Connectors()`, `readADC_Connectors()`, `readOneWire_Connectors()`, `readI2C_5V_Connector()`, or `readEXTRA_Connectors()` according to the sensor type.
-6. Create a new Sensor Object `Sensor newSensor = allSensors[SENSOR_ENUM];`
-7. Update the `newSensor.measurements[0].value` with the sensor data.
-8. Push the `newSensor` object to the `sensorVector` by `sensorVector.push_back(newSensor);`
+1. In `sensor_Board.hpp`:
+    - Add new `SensorName` to `ENUM SensorsImplemented` (use a name that has no conflicts with your sensor library).
+    - Add new sensor to `json` styled `proto_sensors` (use the same format).
+    - Add new `ENUM ValueOrder` if necessary. This also has to be added to `lora_sendData()` and `getValueOrderFromString()`. (Lora data gets sent in the format `<ValueOrder ENUM><Value>` for encoding/decoding).
+2. In `sensor_Read.hpp`:
+    - Include the SENSOR library.
+    - Add implementation to the following functions corresponding to your sensor type with a case statement using your sensor ENUM:
+        - `readI2C_Connectors()`
+        - `readADC_Connectors()`
+        - `readOneWire_Connectors()`
+        - `readI2C_5V_Connector()`
+        - `readSPI_Connector()`
+        - `readEXTRA_Connectors()`
+3. Create a new sensor object at the end of your implementation like: `Sensor newSensor = allSensors[ENUM_SENSOR];` (using the prototype sensor)
+4. Add sensor measurement to the newSensor object like: `newSensor.measurements[0].value = value;`
+5. Push the new sensor object to the global sensorVector like: `sensorVector.push_back(newSensor);`
+6. Increase `SENSORS_NUM` in `include/sensor_Board.hpp` by 1.
+7. <mark>Share your success with the community :-) <mark>
 
 
 ## Wishlist
@@ -74,9 +93,16 @@ To add a new sensor to the teleAgriCulture Board V2.1, follow these steps:
 - [x] custom NTP server option
 - [x] include CA root certificates
 - [ ] support for alternative I2C adresses
-- [ ] data upload intervall based on UI
+- [x] data upload intervall based on UI
 - [ ] powermanagment field tests
 - [ ] implement DS3231 RTC
 - [ ] implement WS2812 LED function and control logic
 - [ ] implement Servo function and control logic
+- [ ] sensor calibration option
+
+### Hardware
+
+- [ ] LiPo Charger circuit on board
+- [ ] Grove I2C Connector
+
  

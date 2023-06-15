@@ -44,8 +44,12 @@
 #include "drivers/DSTherm.h"
 #include "utils/Placeholder.h"
 #include <GravityTDS.h>
+#include <Adafruit_ADS1X15.h>
 
+#define VREF 3.3 // analog reference voltage(Volt) of the ADC
+#define ADC_RES 4095
 #define DHTTYPE DHT22
+#define SEALEVELPRESSURE_HPA (1013.25)
 
 // ----- Sensor section ----- //
 
@@ -71,8 +75,6 @@ bool shouldSaveConfig = false;
 
 // ----- Sensor section ----- //
 
-#define SEALEVELPRESSURE_HPA (1013.25)
-
 Adafruit_BME280 bme;
 BMP280 bmp280;
 Adafruit_VEML7700 veml = Adafruit_VEML7700();
@@ -81,7 +83,7 @@ GAS_GMXXX<TwoWire> gas;
 MiCS6814 multiGasV1;
 
 GravityTDS gravityTds;
-// Pangodream_18650_CL BL(BATSENS, 3.1, 10);
+Adafruit_ADS1115 ads;
 
 float temperature = 22, tdsValue = 0;
 
@@ -107,7 +109,6 @@ void getLow8SectionValue(void);
 // Levelsensor
 
 // TDS Sensor
-#define VREF 3.3  // analog reference voltage(Volt) of the ADC
 #define SCOUNT 30 // sum of sample point
 int getMedianNum(int bArray[], int iFilterLen);
 // TDS Sensor
@@ -116,6 +117,37 @@ int getMedianNum(int bArray[], int iFilterLen);
 static bool printId(const OneWireNg::Id &id);
 static void printScratchpad(const DSTherm::Scratchpad &scrpd);
 // OneWireNg
+
+// calibration values for: Gravity: Dissolved Oxygen Probe
+#define TWO_POINT_CALIBRATION 1
+// Single point calibration needs to be filled CAL1_V and CAL1_T
+#define CAL1_V (1600) // mv
+#define CAL1_T (25)   // ℃
+// Two-point calibration needs to be filled CAL2_V and CAL2_T
+// CAL1 High temperature point, CAL2 Low temperature point
+#define CAL2_V (1300) // mv
+#define CAL2_T (15)   // ℃
+
+const uint16_t DO_Table[41] = {
+    14460, 14220, 13820, 13440, 13090, 12740, 12420, 12110, 11810, 11530,
+    11260, 11010, 10770, 10530, 10300, 10080, 9860, 9660, 9460, 9270,
+    9080, 8900, 8730, 8570, 8410, 8250, 8110, 7960, 7820, 7690,
+    7560, 7430, 7300, 7180, 7070, 6950, 6840, 6730, 6630, 6530, 6410};
+// calibration values for: Gravity: Dissolved Oxygen Probe
+
+// calibration values for: Gravity: Analog Electrical Conductivity Sensor
+#define RES2 820.0
+#define ECREF 200.0
+float kvalue = 1.0;
+float kvalueLow = 1.02;
+float kvalueHigh = 1.22;
+// calibration values for: Gravity: Analog Electrical Conductivity Sensor
+
+// calibration values for: Gravity: Analog pH Sensor / Meter Kit V2
+float phValue = 7.0;
+float acidVoltage = 2032.44;   // buffer solution 4.0 at 22C
+float neutralVoltage = 1455.0; // buffer solution 7.0 at 22C
+// calibration values for: Gravity: Analog pH Sensor / Meter Kit V2
 
 void sensorRead()
 {
@@ -158,9 +190,9 @@ void sensorRead()
     Serial.println("SensorRead.....");
     Serial.println();
 
-    readI2C_Connectors();
-    readADC_Connectors();
     readOneWire_Connectors();
+    readADC_Connectors();
+    readI2C_Connectors();
     readI2C_5V_Connector();
     readEXTRA_Connectors();
 
@@ -326,6 +358,88 @@ void readI2C_Connectors()
         }
         break;
 
+        case ADS1115:
+        {
+            ads.setGain(GAIN_ONE); // 1x gain   +/- 4.096V  1 bit = 0.125mV
+            if (!ads.begin(0x48, &Wire))
+            {
+                Serial.println("16-Bit ADC ADS1115 not found");
+                break;
+            }
+            delay(2000); // wait for sensors
+
+            int16_t adc0, adc1, adc2, adc3;
+            float volts0, volts1, volts2, volts3;
+
+            adc0 = ads.readADC_SingleEnded(0);
+            adc1 = ads.readADC_SingleEnded(1);
+            adc2 = ads.readADC_SingleEnded(2);
+            adc3 = ads.readADC_SingleEnded(3);
+
+            volts0 = (adc0 * 0.125) - 1989; // adc*resolution 1gain - offset (-2480 on 5V)
+            volts1 = (adc1 * 0.125);        // adc*resolution 1gain
+            volts2 = (adc2 * 0.125);        // adc*resolution 1gain
+            volts3 = (adc3 * 0.125);        // adc*resolution 1gain
+
+            // Serial.print("\nvolt 0: ");
+            // Serial.println(volts0);
+
+            // Serial.print("\nvolt 1: ");
+            // Serial.println(volts1);
+
+            // Serial.print("\nvolt 2: ");
+            // Serial.println(volts2);
+
+            // Serial.print("\nvolt 3: ");
+            // Serial.println(volts3);
+
+            Sensor newSensor = allSensors[ADS1115];
+
+            // ORP calc
+            newSensor.measurements[0].value = volts0; // ORP in mV
+
+            // DO calc
+            if (TWO_POINT_CALIBRATION == 0)
+            {
+                uint16_t V_saturation = (uint32_t)CAL1_V + (uint32_t)35 * temperature - (uint32_t)CAL1_T * 35;
+                newSensor.measurements[1].value = (volts1 * DO_Table[int(temperature)] / V_saturation);
+            }
+            else
+            {
+                uint16_t V_saturation = (int16_t)((int8_t)temperature - CAL2_T) * ((uint16_t)CAL1_V - CAL2_V) / ((uint8_t)CAL1_T - CAL2_T) + CAL2_V;
+                newSensor.measurements[1].value = (volts1 * DO_Table[int(temperature)] / V_saturation);
+            }
+
+            // EC calc
+            float value = 0, valueTemp = 0, rawEC = 0;
+
+            rawEC = volts2 / RES2 / ECREF;
+            valueTemp = rawEC * kvalue;
+
+            if (valueTemp > 2.5)
+            {
+                kvalue = kvalueHigh;
+            }
+            else if (valueTemp < 2.0)
+            {
+                kvalue = kvalueLow;
+            }
+
+            value = rawEC * kvalue;                                // calculate the EC value after automatic shift
+            value = value / (1.0 + 0.0185 * (temperature - 25.0)); // temperature compensation
+            newSensor.measurements[2].value = value;
+
+            // pH calc
+            float slope = (7.0 - 4.0) / ((neutralVoltage - 1500.0) / 3.0 - (acidVoltage - 1500.0) / 3.0); // two point: (_neutralVoltage,7.0),(_acidVoltage,4.0)
+            float intercept = 7.0 - slope * (neutralVoltage - 1500.0) / 3.0;
+
+            phValue = slope * (volts3 - 1500.0) / 3.0 + intercept; // y = k*x + b
+            newSensor.measurements[3].value = phValue;
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
         default:
             break;
         }
@@ -352,7 +466,7 @@ void readADC_Connectors()
             int analogBuffer[SCOUNT]; // store the analog value in the array, read from ADC
             int analogBufferTemp[SCOUNT];
             int analogBufferIndex = 0, copyIndex = 0;
-            float averageVoltage = 0, tdsValue = 0, temperature = 18;
+            float averageVoltage = 0, tdsValue = 0;
 
             int tdsSensorPin;
 
@@ -480,6 +594,41 @@ void readADC_Connectors()
         }
         break;
 
+        case SOUND:
+        {
+            int soundPin;
+            uint32_t raw;
+            uint32_t millivolts;
+
+            if (i == 0)
+            {
+                soundPin = ANALOG1;
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                soundPin = ANALOG2;
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                soundPin = ANALOG3;
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            pinMode(soundPin, INPUT);
+
+            Sensor newSensor = allSensors[SOUND];
+            newSensor.measurements[0].value = millivolts * 50; // mV to decibel value by *50
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
         default:
             break;
         }
@@ -588,6 +737,9 @@ void readOneWire_Connectors()
 
                     newSensor.measurements[0].value = static_cast<double>(temp) / 1000.0;
                     sensorVector.push_back(newSensor);
+                    temperature = float(newSensor.measurements[0].value);
+                    Serial.print("\nTemp used: ");
+                    Serial.print(temperature);
                 }
             }
         }

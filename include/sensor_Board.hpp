@@ -28,7 +28,7 @@
 #include <board_credentials.h>
 #include <WString.h>
 
-#define SENSORS_NUM 15      // Number of Sensors implemeted
+#define SENSORS_NUM 17      // Number of Sensors implemeted
 #define MEASURMENT_NUM 8    // max. Sensor values / Sensor (Multi Gas Sensor V1 produces 8 measures to send)
 #define MAX_I2C_ADDRESSES 3 // max. stored I2C addresses / Sensor
 #define I2C_NUM 4
@@ -60,6 +60,7 @@ bool useEnterpriseWPA = false;
 bool useNTP = false;
 bool useCustomNTP = false;
 bool loraChanged = false;
+bool webpage = false;
 
 int upload_interval = 60;
 
@@ -76,13 +77,13 @@ String GET_Time_Address = "https://www.teleagriculture.org";
 const int SSL_PORT = 443;
 const unsigned long TIMEOUT = 2500;
 
-static osjob_t sendjob;
+// static osjob_t sendjob;
 uint8_t dev_eui[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t app_eui[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t app_key[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Saves the LMIC structure during DeepSleep
-RTC_DATA_ATTR lmic_t RTC_LMIC;
+// RTC_DATA_ATTR lmic_t RTC_LMIC;
 
 // ----- Define Pins ----- //
 #define I2C_SDA 8 // on teleAgriCulture Board V2.0 I2C_5V SDA is GPIO 15
@@ -176,6 +177,11 @@ enum ValueOrder
   CH4v,     // uint16 encoding
   C2H5OHv,  // uint16 encoding
   ALTITUDE, // uint16 encoding
+  MV,       // rawfloat encoding
+  MGL,      // temp encoding
+  MSCM,     // temp encoding
+  PH,       // temp encoding
+  DBA,      // temp encoding
   RGB,
   ANGLE
 };
@@ -197,7 +203,9 @@ enum SensorsImplemented
   BATTERY,
   WS2812,
   SERVO,
-  BME_280
+  BME_280,
+  ADS1115,
+  SOUND
 };
 
 class Measurement
@@ -608,6 +616,61 @@ const char *proto_sensors = R"([
       },
       {
         "alt_1": "0x77"
+      }
+    ]
+  },
+  {
+    "sensor-id": 16,
+    "name": "ADS1115",
+    "con_typ": "I2C",
+    "returnCount": 4,
+    "measurements": [
+      {
+        "value": 56,
+        "valueOrder": "MV",
+        "unit": "mV",
+        "data_name": "ORP"
+      },
+      {
+        "value": 20.3,
+        "valueOrder": "MGL",
+        "unit": "mg/L",
+        "data_name": "DO"
+      },
+      {
+        "value": 1000.5,
+        "valueOrder": "MSCM",
+        "unit": "mS/cm",
+        "data_name": "EC"
+      },
+      {
+        "value": 100,
+        "valueOrder": "PH",
+        "unit": "pH",
+        "data_name": "PH"
+      }
+    ],
+    "i2c_add": "0x48",
+    "possible_i2c_add": [
+      {
+        "standard": "0x48"
+      },
+      {
+        "alt_1": "0x49"
+      }
+    ]
+  },
+  {
+    "sensor-id": 17,
+    "name": "Sound LVL",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 20,
+        "valueOrder": "DBA",
+        "unit": "dBA",
+        "data_name": "Sound lvl"
       }
     ]
   }

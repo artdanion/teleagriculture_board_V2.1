@@ -1,9 +1,9 @@
 #include <Arduino.h>
 
-int boardID = 0000;
-String version = "Firmware Version 1.00";
-String API_KEY = "XXXXXXX";
-String lora_fqz = "EU 868 MHz"; //"Asia 923 MHz";   //"US/CD/AUS 915 MHz"; 
+int boardID = 1000;
+String version = "Firmware Version 1.02";
+String API_KEY = "xxxxxxxx0000000000000000";
+String lora_fqz = "EU 868 MHz"; // "US/CD 915 MHz"; // "Asia 923 MHz";   // "JP 923 MHz"; // "AUS 915 MHz";
 String OTAA_APPEUI = "0000000000000000";                 // TTN --> msb first
 String OTAA_DEVEUI = "0000000000000000";                 // TTN --> msb first
 String OTAA_APPKEY = "00000000000000000000000000000000"; // TTN --> msb first

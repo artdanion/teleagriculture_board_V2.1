@@ -358,5 +358,60 @@
         "alt_1": "0x77"
       }
     ]
+  },
+  {
+    "sensor-id": 16,
+    "name": "ADS1115",
+    "con_typ": "I2C",
+    "returnCount": 4,
+    "measurements": [
+      {
+        "value": 56,
+        "valueOrder": "MV",
+        "unit": "%",
+        "data_name": "ORP"
+      },
+      {
+        "value": 20.3,
+        "valueOrder": "MGL",
+        "unit": "mg/L",
+        "data_name": "DO"
+      },
+      {
+        "value": 1000.5,
+        "valueOrder": "MSCM",
+        "unit": "mS/cm",
+        "data_name": "EC"
+      },
+      {
+        "value": 100,
+        "valueOrder": "PH",
+        "unit": "pH",
+        "data_name": "PH"
+      }
+    ],
+    "i2c_add": "0x48",
+    "possible_i2c_add": [
+      {
+        "standard": "0x48"
+      },
+      {
+        "alt_1": "0x49"
+      }
+    ]
+  },
+  {
+    "sensor-id": 17,
+    "name": "Sound LVL",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 20,
+        "valueOrder": "DBA",
+        "unit": "dBA",
+        "data_name": "Sound lvl"
+      }
+    ]
   }
 ]
