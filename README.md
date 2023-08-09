@@ -3,7 +3,7 @@
 >Firmware is based on this VS Code / Platformio ESP32-S3 Project
 
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
->[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.0
+>[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.03
 >
 >**If you are using LORA please choose the right Firmware for your location / lora module**
 >and you have to enter your credentials for LoRa on the Config Portal
