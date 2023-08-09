@@ -35,7 +35,7 @@
 
 //TODO: find a I2C Address solution
 
-
+/*********************************** VERSION 1.03 ****************************
 /*
  *
  * For defines, GPIOs and implemented Sensors, see /include/sensor_Board.hpp
@@ -164,14 +164,17 @@ RTC_DATA_ATTR u1_t RTC_LORAWAN_dnConf;
 RTC_DATA_ATTR s1_t RTC_LORAWAN_adrTxPow;
 RTC_DATA_ATTR u1_t RTC_LORAWAN_txChnl;
 RTC_DATA_ATTR s1_t RTC_LORAWAN_datarate;
-RTC_DATA_ATTR u4_t RTC_LORAWAN_channelFreq[MAX_CHANNELS];
-RTC_DATA_ATTR u2_t RTC_LORAWAN_channelDrMap[MAX_CHANNELS];
-RTC_DATA_ATTR u4_t RTC_LORAWAN_channelDlFreq[MAX_CHANNELS];
-RTC_DATA_ATTR band_t RTC_LORAWAN_bands[MAX_BANDS];
 RTC_DATA_ATTR u2_t RTC_LORAWAN_channelMap;
 RTC_DATA_ATTR s2_t RTC_LORAWAN_adrAckReq;
 RTC_DATA_ATTR u1_t RTC_LORAWAN_rx1DrOffset;
 RTC_DATA_ATTR u1_t RTC_LORAWAN_rxDelay;
+
+#if (CFG_eu868)
+RTC_DATA_ATTR u4_t RTC_LORAWAN_channelFreq[MAX_CHANNELS];
+RTC_DATA_ATTR u2_t RTC_LORAWAN_channelDrMap[MAX_CHANNELS];
+RTC_DATA_ATTR u4_t RTC_LORAWAN_channelDlFreq[MAX_CHANNELS];
+RTC_DATA_ATTR band_t RTC_LORAWAN_bands[MAX_BANDS];
+#endif
 
 void doubleReset_wakeup_reason();
 void GPIO_wake_up();
@@ -3446,7 +3449,7 @@ void saveLMICToRTC(int deepsleep_sec)
    unsigned long now = millis();
 
    // EU Like Bands
-#if defined(CFG_LMIC_EU_like)
+#if defined(CFG_eu868)
    Serial.println(F("Reset CFG_LMIC_EU_like band avail"));
    for (int i = 0; i < MAX_BANDS; i++)
    {
@@ -3492,11 +3495,14 @@ void saveLORA_State(void)
    RTC_LORAWAN_adrAckReq = LMIC.adrAckReq;
    RTC_LORAWAN_rx1DrOffset = LMIC.rx1DrOffset;
    RTC_LORAWAN_rxDelay = LMIC.rxDelay;
+
+#if (CFG_eu868)
    memcpy(RTC_LORAWAN_channelFreq, LMIC.channelFreq, MAX_CHANNELS * sizeof(u4_t));
    memcpy(RTC_LORAWAN_channelDrMap, LMIC.channelDrMap, MAX_CHANNELS * sizeof(u2_t));
    memcpy(RTC_LORAWAN_channelDlFreq, LMIC.channelDlFreq, MAX_CHANNELS * sizeof(u4_t));
    memcpy(RTC_LORAWAN_bands, LMIC.bands, MAX_BANDS * sizeof(band_t));
    RTC_LORAWAN_channelMap = LMIC.channelMap;
+#endif
 
    Serial.println("LMIC configuration stored in RTC Memory.");
 }
@@ -3509,10 +3515,6 @@ void loadLORA_State()
    LMIC_setSession(RTC_LORAWAN_netid, RTC_LORAWAN_devaddr, RTC_LORAWAN_nwkKey, RTC_LORAWAN_artKey);
    LMIC_setSeqnoUp(RTC_LORAWAN_seqnoUp);
    LMIC_setDrTxpow(RTC_LORAWAN_datarate, RTC_LORAWAN_adrTxPow);
-   memcpy(LMIC.bands, RTC_LORAWAN_bands, MAX_BANDS * sizeof(band_t));
-   memcpy(LMIC.channelFreq, RTC_LORAWAN_channelFreq, MAX_CHANNELS * sizeof(u4_t));
-   memcpy(LMIC.channelDlFreq, RTC_LORAWAN_channelDlFreq, MAX_CHANNELS * sizeof(u4_t));
-   memcpy(LMIC.channelDrMap, RTC_LORAWAN_channelDrMap, MAX_CHANNELS * sizeof(u2_t));
    LMIC.seqnoDn = RTC_LORAWAN_seqnoDn;
    LMIC.dnConf = RTC_LORAWAN_dnConf;
    LMIC.adrAckReq = RTC_LORAWAN_adrAckReq;
@@ -3520,7 +3522,13 @@ void loadLORA_State()
    LMIC.rx1DrOffset = RTC_LORAWAN_rx1DrOffset;
    LMIC.rxDelay = RTC_LORAWAN_rxDelay;
    LMIC.txChnl = RTC_LORAWAN_txChnl;
-   LMIC.channelMap = RTC_LORAWAN_channelMap;
 
+#if (CFG_eu868)
+   memcpy(LMIC.bands, RTC_LORAWAN_bands, MAX_BANDS * sizeof(band_t));
+   memcpy(LMIC.channelFreq, RTC_LORAWAN_channelFreq, MAX_CHANNELS * sizeof(u4_t));
+   memcpy(LMIC.channelDlFreq, RTC_LORAWAN_channelDlFreq, MAX_CHANNELS * sizeof(u4_t));
+   memcpy(LMIC.channelDrMap, RTC_LORAWAN_channelDrMap, MAX_CHANNELS * sizeof(u2_t));
+   LMIC.channelMap = RTC_LORAWAN_channelMap;
+#endif
    Serial.println("LMIC configuration reloaded from RTC Memory.");
 }
