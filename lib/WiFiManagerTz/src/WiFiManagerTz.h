@@ -1,14 +1,14 @@
 /*            web server args
 upload: WIFI
-BoardID: 1003
-API_KEY: 8i8nRED12XgHb3vBjIXCf0rXMedI8NTB
+BoardID: 100X
+API_KEY: XXXXXxxxxXXXXxXXXXXXXXXXX
 use-WPA_enterprise: 1
 ANONYMUS: anonymus@example.com
 certificate:
 lora_fqz: EU
-OTAA_DEVEUI: 70B3D57ED005A8F4
-OTAA_APPEUI: 70B3D57ED005A8F4
-OTAA_APPKEY: DF6B2A4AC0930BCA55141564D751D578
+OTAA_DEVEUI: 0000000000000000
+OTAA_APPEUI: 0000000000000000
+OTAA_APPKEY: 0000000000000000000000000000000
 i2c_1: -1
 i2c_3: -1
 i2c_2: -1
@@ -608,7 +608,7 @@ namespace WiFiManagerNS
 
     if (_wifiManager->server->hasArg("up_interval"))
     {
-      String upInterval=_wifiManager->server->arg("up_interval");
+      String upInterval = _wifiManager->server->arg("up_interval");
       upload_interval = atoi(upInterval.c_str());
     }
 
@@ -667,10 +667,15 @@ namespace WiFiManagerNS
     save_Connectors();
     save_Config();
 
-    const char *successResp = "<script>parent.location.href = '/exit';</script>";
+    delay(200);
+
+    const char *successResp = "<script>parent.location.href = '/';</script>";
     const char *failureResp = "<script>parent.alert('fail');</script>";
 
     _wifiManager->server->send(200, "text/html", success ? successResp : failureResp);
+
+    delay(200);
+    ESP.restart();
   }
 
   void bindServerCallback()

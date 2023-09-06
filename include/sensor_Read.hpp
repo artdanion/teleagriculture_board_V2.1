@@ -226,13 +226,6 @@ void readI2C_Connectors()
             float pressure, altitude;
             uint8_t addressValue;
 
-            // Parse the I2C address string
-            // if (!parseI2CAddress((allSensors[j].i2c_add), &addressValue))
-            // {
-            //     printf("Error: Invalid I2C address %s\n", (allSensors[j].i2c_add));
-            //     break;
-            // }
-
             bmp280.begin();
             delay(100);
             bmp280.setConfigTStandby(BMP280::eConfigTStandby_t::eConfigTStandby_500);
@@ -244,7 +237,7 @@ void readI2C_Connectors()
             newSensor.measurements[0].value = bmp280.getTemperature();
             pressure = bmp280.getPressure();
             newSensor.measurements[1].value = (double)(pressure / 100.00F);
-            newSensor.measurements[2].value = bmp280.calAltitude(pressure);
+            newSensor.measurements[2].value = bmp280.calAltitude(pressure, SEALEVELPRESSURE_HPA);
 
             sensorVector.push_back(newSensor);
         }
@@ -254,13 +247,6 @@ void readI2C_Connectors()
         {
             unsigned status;
             uint8_t addressValue;
-
-            // Parse the I2C address string
-            // if (!parseI2CAddress((allSensors[j].i2c_add), &addressValue))
-            // {
-            //     printf("Error: Invalid I2C address %s\n", (allSensors[j].i2c_add));
-            //     break;
-            // }
 
             status = bme.begin(0x76, &Wire); // addressValue, &I2CCON);
             if (!status)
@@ -274,14 +260,13 @@ void readI2C_Connectors()
                 Serial.println("        ID of 0x61 represents a BME 680.\n");
                 break;
             }
-            // Serial.print(bme.readTemperature());
-            // Serial.print(1.8 * bme.readTemperature() + 32);
 
             Sensor newSensor = allSensors[BME_280];
             newSensor.measurements[0].value = bme.readHumidity();
             newSensor.measurements[1].value = bme.readTemperature();
             newSensor.measurements[2].value = (bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
+            
             sensorVector.push_back(newSensor);
         }
         break;
