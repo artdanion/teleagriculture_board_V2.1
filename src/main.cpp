@@ -144,6 +144,8 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Adafruit_ST7735.h>
 
+#define DEBUG_PRINT 0
+
 // ----- Deep Sleep related -----//
 #define BUTTON_PIN_BITMASK 0x1      // GPIO 0
 #define uS_TO_S_FACTOR 1000000UL    /* Conversion factor for micro seconds to seconds */
@@ -196,6 +198,7 @@ void checkButton(void);
 void toggleLED(void);
 void startBlinking(void);
 void stopBlinking(void);
+void openConfig(void);
 
 // file and storage functions
 void load_Sensors(void);
@@ -433,6 +436,12 @@ void setup()
    load_Connectors(); // Connectors lookup table
    load_Config();     // load config Data
 
+#ifdef DEBUG_PRINT
+   delay(2000);
+   checkLoadedStuff();
+#endif
+
+
    /* ------------  Test DATA for connected Sensors  --------------------------
 
       ---> comes from Web Config normaly or out of SPIFF
@@ -470,8 +479,6 @@ void setup()
    ++++++++++++++++ overwrite stored values for debug   +++++++++++++++                */
 
    Wire.setPins(I2C_SDA, I2C_SCL);
-
-   // checkLoadedStuff();  // debugging output
 
    if (!useBattery)
    {
@@ -555,23 +562,27 @@ void setup()
             tft.setCursor(5, 50);
             tft.print("WiFi Connected");
          }
-      }
+         if ((WiFi.status() == WL_CONNECTED) && useNTP)
+         {
+            WiFiManagerNS::configTime();
+            WiFiManagerNS::NTP::onTimeAvailable(&on_time_available);
+         }
 
-      if ((WiFi.status() == WL_CONNECTED) && useNTP)
-      {
-         WiFiManagerNS::configTime();
-         WiFiManagerNS::NTP::onTimeAvailable(&on_time_available);
-      }
-
-      if (!useNTP)
-      {
-         String header = get_header();
-         delay(1000);
-         String Time1 = getDateTime(header);
-         setEsp32Time(Time1.c_str());
+         if (!useNTP)
+         {
+            String header = get_header();
+            delay(500);
+            String Time1 = getDateTime(header);
+            setEsp32Time(Time1.c_str());
+         }
       }
 
       stopBlinking();
+   }
+
+   if (forceConfig)
+   {
+      openConfig();
    }
 
    if (upload == "WIFI")
@@ -652,21 +663,7 @@ void loop()
 
    if (forceConfig)
    {
-      startBlinking(); // Start blinking an LED to indicate configuration mode
-
-      setUPWiFi(); // Set up WiFi connection
-
-      backlight_pwm = 200;
-      analogWrite(TFT_BL, backlight_pwm); // Turn off TFT Backlight
-
-      if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
-      {
-         Serial.println("failed to connect and hit timeout");
-         delay(3000);
-         ESP.restart(); // Failed to connect, restart ESP32
-      }
-      ESP.restart();
-      stopBlinking(); // Stop blinking the LED
+      openConfig();
    }
 
    time_t rawtime;
@@ -795,6 +792,8 @@ void loop()
 
    if (upload == "LORA")
    {
+      os_runloop_once(); // Run the LoRaWAN OS run loop
+
       if (sendDataLoRa) // If ít`s time to send lora data
       {
          sensorRead(); // Read sensor data
@@ -803,8 +802,6 @@ void loop()
 
          lora_sendData(); // Send data via LoRa
       }
-
-      os_runloop_once(); // Run the LoRaWAN OS run loop
 
       if (loraJoinFailed && useDisplay)
       {
@@ -816,6 +813,12 @@ void loop()
          tft.setTextSize(1);
          tft.setCursor(5, 50);
          tft.print("NO LORA GW near");
+      }
+
+      if (loraJoinFailed && useBattery)
+      {
+         Serial.println("NO Gateway found, restarting...");
+         ESP.restart();
       }
 
       const bool timeCriticalJobs = os_queryTimeCriticalJobs(ms2osticksRound((TX_INTERVAL * 1000)));
@@ -873,6 +876,7 @@ void loop()
             Serial.print(time_interval);
             Serial.println(" MicroSeconds");
 
+            Serial.end();
             Serial.flush();
 
             delay(100);
@@ -954,6 +958,7 @@ void loop()
 
          gpio_deep_sleep_hold_en();
 
+         Serial.end();
          Serial.flush();
 
          delay(100);
@@ -1954,9 +1959,9 @@ void measurementsPage(int page)
 
 void checkLoadedStuff(void)
 {
-   Serial.println();
-   Serial.println("---------------Prototype Sensors loaded -----------");
-   printProtoSensors();
+   // Serial.println();
+   // Serial.println("---------------Prototype Sensors loaded -----------");
+   // printProtoSensors();
    Serial.println();
    Serial.println("---------------Connector table loaded -----------");
 
@@ -1970,38 +1975,24 @@ void checkLoadedStuff(void)
    Serial.println();
    Serial.println("---------------Config loaded -----------");
 
-   Serial.print("\nBoard ID: ");
-   Serial.println(boardID);
-   Serial.print("Battery powered: ");
-   Serial.println(useBattery);
-   Serial.print("Display: ");
-   Serial.println(useDisplay);
-   Serial.print("use Enterprise WPA: ");
-   Serial.println(useEnterpriseWPA);
-   Serial.print("use Custom NTP: ");
-   Serial.println(useCustomNTP);
-   Serial.print("use NTP: ");
-   Serial.println(useNTP);
-   Serial.print("API Key: ");
-   Serial.println(API_KEY);
-   Serial.print("Timezone: ");
-   Serial.println(timeZone);
-   Serial.print("Upload: ");
-   Serial.println(upload);
-   Serial.print("Anonym ID: ");
-   Serial.println(anonym);
-   Serial.print("\nUser CA: ");
-   Serial.println(user_CA);
-   Serial.print("Custom NTP Address: ");
-   Serial.println(customNTPaddress);
-   Serial.print("Lora Frequency: ");
-   Serial.println(lora_fqz);
-   Serial.print("OTAA DEVEUI: ");
-   Serial.println(OTAA_DEVEUI);
-   Serial.print("OTAA APPEUI: ");
-   Serial.println(OTAA_APPEUI);
-   Serial.print("OTAA APPKEY: ");
-   Serial.println(OTAA_APPKEY);
+   Serial.println("Configuration Values:");
+   Serial.printf("BoardID: %d\n", boardID);
+   Serial.printf("useBattery: %d\n", useBattery);
+   Serial.printf("useDisplay: %d\n", useDisplay);
+   Serial.printf("useEnterpriseWPA: %d\n", useEnterpriseWPA);
+   Serial.printf("useCustomNTP: %d\n", useCustomNTP);
+   Serial.printf("useNTP: %d\n", useNTP);
+   Serial.printf("API_KEY: %s\n", API_KEY.c_str());
+   Serial.printf("upload: %s\n", upload.c_str());
+   Serial.printf("upload_interval: %d\n", upload_interval);
+   Serial.printf("anonym: %s\n", anonym.c_str());
+   Serial.printf("user_CA: %s\n", user_CA.c_str());
+   Serial.printf("customNTPaddress: %s\n", customNTPaddress.c_str());
+   Serial.printf("timeZone: %s\n", timeZone.c_str());
+   Serial.printf("OTAA_DEVEUI: %s\n", OTAA_DEVEUI.c_str());
+   Serial.printf("OTAA_APPEUI: %s\n", OTAA_APPEUI.c_str());
+   Serial.printf("OTAA_APPKEY: %s\n", OTAA_APPKEY.c_str());
+   Serial.printf("lora_ADR: %d\n", lora_ADR);
 
    Serial.println("\n---------------DEBUGG END -----------");
 
@@ -2028,6 +2019,7 @@ void save_Config(void)
    doc["OTAA_DEVEUI"] = OTAA_DEVEUI;
    doc["OTAA_APPEUI"] = OTAA_APPEUI;
    doc["OTAA_APPKEY"] = OTAA_APPKEY;
+   doc["lora_ADR"] = lora_ADR;
 
    File configFile = SPIFFS.open("/board_config.json", "w");
    if (!configFile)
@@ -2080,6 +2072,7 @@ void load_Config(void)
                OTAA_DEVEUI = doc["OTAA_DEVEUI"].as<String>();
                OTAA_APPEUI = doc["OTAA_APPEUI"].as<String>();
                OTAA_APPKEY = doc["OTAA_APPKEY"].as<String>();
+               lora_ADR = doc["lora_ADR"];
             }
          }
          else
@@ -2741,7 +2734,6 @@ void setUPWiFi()
                                      { configSaved = true; }); // restart on credentials save, ESP32 doesn't like to switch between AP/STA
 }
 
-
 void convertTo_LSB_EUI(String input, uint8_t *output)
 {
    // Check if input matches pattern
@@ -3155,7 +3147,15 @@ void onEvent(ev_t ev)
       // Disable link check validation (automatically enabled
       // during join, but because slow data rates change max TX
       // size, we don't use it in this example.
-      LMIC_setLinkCheckMode(0);
+      if (lora_ADR)
+      {
+         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
+         LMIC_setLinkCheckMode(0);
+      }
+      else
+      {
+         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
+      }
    }
    break;
    /*
@@ -3169,6 +3169,9 @@ void onEvent(ev_t ev)
    case EV_JOIN_FAILED:
       Serial.println(F("EV_JOIN_FAILED"));
       loraJoinFailed = true;
+      // upload="WIFI"; // Fallback WIFI
+      // save_Config();
+      // ESP.restart();
       break;
    case EV_REJOIN_FAILED:
       Serial.println(F("EV_REJOIN_FAILED"));
@@ -3588,3 +3591,23 @@ void loadLORA_State()
    delay(200);
    Serial.println("LMIC configuration reloaded from RTC Memory.");
 }
+
+void openConfig()
+{
+   startBlinking(); // Start blinking an LED to indicate configuration mode
+
+   setUPWiFi(); // Set up WiFi connection
+
+   backlight_pwm = 200;
+   analogWrite(TFT_BL, backlight_pwm); // Turn off TFT Backlight
+
+   if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
+   {
+      Serial.println("failed to connect and hit timeout");
+      delay(3000);
+      ESP.restart(); // Failed to connect, restart ESP32
+   }
+   ESP.restart();
+   stopBlinking(); // Stop blinking the LED
+}
+
