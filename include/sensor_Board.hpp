@@ -61,6 +61,7 @@ bool useNTP = false;
 bool useCustomNTP = false;
 bool loraChanged = false;
 bool webpage = false;
+bool lora_ADR = false;
 
 int upload_interval = 60;
 

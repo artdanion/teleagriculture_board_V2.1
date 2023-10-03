@@ -1,9 +1,13 @@
 #include <Arduino.h>
 
+#ifndef CUSTOM_LORA_FQZ
+#define CUSTOM_LORA_FQZ "EU 868 MHz"
+#endif
+
 int boardID = 1000;
-String version = "Firmware Version 1.05";
+String version = "Firmware Version " TAC_VERSION;
 String API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-String lora_fqz = "EU 868 MHz"; // "US/CD 915 MHz"; // "AUS 915 MHz"; // "Asia 923 MHz";  // "JP 923 MHz"; // "KR 920 MHz"; // "IND 866 MHz"; //
+String lora_fqz = CUSTOM_LORA_FQZ;
 String OTAA_APPEUI = "0000000000000000";                 // TTN --> msb first
 String OTAA_DEVEUI = "0000000000000000";                 // TTN --> msb first
 String OTAA_APPKEY = "00000000000000000000000000000000"; // TTN --> msb first
