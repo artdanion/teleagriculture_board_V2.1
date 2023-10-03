@@ -270,6 +270,7 @@ namespace WiFiManagerNS
     TimeConfHTML += "<label for='OTAA_APPEUI'>OTAA_APPEUI:</label><input type='text' id='OTAA_APPEUI' name='OTAA_APPEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_APPEUI + " required>";
     TimeConfHTML += "<label for='OTAA_DEVEUI'>OTAA_DEVEUI:</label><input type='text' id='OTAA_DEVEUI' name='OTAA_DEVEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_DEVEUI + " required>";
     TimeConfHTML += "<label for='OTAA_APPKEY'>OTAA_APPKEY:</label><input type='text' id='OTAA_APPKEY' name='OTAA_APPKEY' pattern='^[0-9A-F]{32}$' title='Enter 16 hexadecimal digits without any prefix or separator' value=" + OTAA_APPKEY + " required>";
+    TimeConfHTML += "<BR><input type='checkbox' id='ADR' name='ADR' value='1'/><label for='ADR'> use ADR</label>";
     TimeConfHTML += "</div><BR>";
 
     //------------- Start Connectors ------- //
@@ -615,6 +616,16 @@ namespace WiFiManagerNS
     if (_wifiManager->server->hasArg("upload"))
     {
       upload = _wifiManager->server->arg("upload").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("ADR"))
+    {
+      uint8_t use_ADR = atoi((_wifiManager->server->arg("ADR")).c_str());
+      lora_ADR = use_ADR == 1;
+    }
+    else
+    {
+      lora_ADR = false;
     }
 
     if (_wifiManager->server->hasArg("API_KEY"))
