@@ -50,6 +50,10 @@
 #define ADC_RES 4095
 #define DHTTYPE DHT22
 #define SEALEVELPRESSURE_HPA (1013.25)
+#define RANGE 5000            // Depth measuring range 5000mm (for water)
+#define CURRENT_INIT 4.00     // Current @ 0mm (uint: mA)
+#define DENSITY_WATER 1       // Pure water density normalized to 1
+#define DENSITY_GASOLINE 0.74 // Gasoline density
 
 // ----- Sensor section ----- //
 
@@ -96,6 +100,7 @@ void readSPI_Connector();
 void readEXTRA_Connectors();
 float getBatteryVoltage();
 void updateDataNames(std::vector<Sensor> &sensorVector);
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max);
 
 // LevelSensor
 #define NO_TOUCH 0xFE
@@ -226,25 +231,19 @@ void readI2C_Connectors()
             float pressure, altitude;
             uint8_t addressValue;
 
-            // Parse the I2C address string
-            // if (!parseI2CAddress((allSensors[j].i2c_add), &addressValue))
-            // {
-            //     printf("Error: Invalid I2C address %s\n", (allSensors[j].i2c_add));
-            //     break;
-            // }
-
             bmp280.begin();
             delay(100);
-            bmp280.setConfigTStandby(BMP280::eConfigTStandby_t::eConfigTStandby_500);
-            bmp280.setCtrlMeasSamplingTemp(BMP280::eSampling_t::eSampling_X4);
-            bmp280.setCtrlMeasSamplingPress(BMP280::eSampling_t::eSampling_X4);
-            delay(100);
+            bmp280.setCtrlMeasMode(BMP280::eCtrlMeasMode_t::eCtrlMeasModeForced);
+            bmp280.setConfigTStandby(BMP280::eConfigTStandby_t::eConfigTStandby_1000);
+            bmp280.setCtrlMeasSamplingTemp(BMP280::eSampling_t::eSampling_X16);
+            bmp280.setCtrlMeasSamplingPress(BMP280::eSampling_t::eSampling_X16);
+            delay(1000);
 
             Sensor newSensor = allSensors[BMP_280];
             newSensor.measurements[0].value = bmp280.getTemperature();
             pressure = bmp280.getPressure();
-            newSensor.measurements[1].value = (double)(pressure / 100.00F);
-            newSensor.measurements[2].value = bmp280.calAltitude(pressure);
+            newSensor.measurements[1].value = (double)(pressure / 100.00F) + 20;                        // 20 as offset ?!?
+            newSensor.measurements[2].value = bmp280.calAltitude(pressure, SEALEVELPRESSURE_HPA + 21);  // 21 as offset ?!?
 
             sensorVector.push_back(newSensor);
         }
@@ -254,13 +253,6 @@ void readI2C_Connectors()
         {
             unsigned status;
             uint8_t addressValue;
-
-            // Parse the I2C address string
-            // if (!parseI2CAddress((allSensors[j].i2c_add), &addressValue))
-            // {
-            //     printf("Error: Invalid I2C address %s\n", (allSensors[j].i2c_add));
-            //     break;
-            // }
 
             status = bme.begin(0x76, &Wire); // addressValue, &I2CCON);
             if (!status)
@@ -274,14 +266,13 @@ void readI2C_Connectors()
                 Serial.println("        ID of 0x61 represents a BME 680.\n");
                 break;
             }
-            // Serial.print(bme.readTemperature());
-            // Serial.print(1.8 * bme.readTemperature() + 32);
 
             Sensor newSensor = allSensors[BME_280];
             newSensor.measurements[0].value = bme.readHumidity();
             newSensor.measurements[1].value = bme.readTemperature();
             newSensor.measurements[2].value = (bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
+
             sensorVector.push_back(newSensor);
         }
         break;
@@ -621,15 +612,212 @@ void readADC_Connectors()
                 millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
             }
 
-            pinMode(soundPin, INPUT);
+            Serial.print("Millivolts: ");
+            Serial.println(millivolts);
 
             Sensor newSensor = allSensors[SOUND];
-            newSensor.measurements[0].value = millivolts * 50; // mV to decibel value by *50
+            newSensor.measurements[0].value = ((float)millivolts / 1000.0) * 50.0; // mV to decibel value by *50.0
             sensorVector.push_back(newSensor);
         }
         break;
 
-        default:
+        case PRE_LVL:
+        {
+            int depthPin;
+            uint32_t raw;
+            uint32_t millivolts;
+
+            int16_t dataVoltage;
+            float dataCurrent, depth; // unit:mA
+
+            if (i == 0)
+            {
+                depthPin = ANALOG1;
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                depthPin = ANALOG2;
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                depthPin = ANALOG3;
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            Sensor newSensor = allSensors[DEPTH];
+            dataCurrent = (float)millivolts / 120.0;                               // Sense Resistor:120ohm
+            depth = (dataCurrent - CURRENT_INIT) * (RANGE / DENSITY_WATER / 16.0); // Calculate depth from current readings
+            newSensor.measurements[0].value = depth;                               // depth in mm
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case UV_DFR:
+        {
+            int uvPin;
+            uint32_t raw;
+            uint32_t millivolts;
+
+            if (i == 0)
+            {
+                uvPin = ANALOG1;
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                uvPin = ANALOG2;
+                pinMode(uvPin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                uvPin = ANALOG3;
+                pinMode(uvPin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            Sensor newSensor = allSensors[UV_DFR];
+
+            Serial.print("Millivolts: ");
+            Serial.println(millivolts);
+
+            float uvIntensity = mapfloat(((float)millivolts / 1000.0), 0.98, 2.9, 0.0, 15.0);
+
+            newSensor.measurements[0].value = uvIntensity;
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case LIGHT_DFR:
+        {
+            int lightPin;
+           uint32_t raw;
+            uint32_t millivolts;
+
+            if (i == 0)
+            {
+                lightPin = ANALOG1;
+                pinMode(lightPin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                lightPin = ANALOG2;
+                pinMode(lightPin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                lightPin = ANALOG3;
+                pinMode(lightPin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            Sensor newSensor = allSensors[LIGHT_DFR];
+
+            int light = mapfloat(((float)millivolts / 1000.0), 0.01, 3.3, 0.0, 1000.0);
+
+            newSensor.measurements[0].value = light;
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+         case DFR_LM35:
+        {
+            int lm35Pin;
+           uint32_t raw;
+            uint32_t millivolts;
+
+            if (i == 0)
+            {
+                lm35Pin = ANALOG1;
+                pinMode(lm35Pin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                lm35Pin = ANALOG2;
+                pinMode(lm35Pin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                lm35Pin = ANALOG3;
+                pinMode(lm35Pin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            Sensor newSensor = allSensors[DFR_LM35];
+
+            float temp = millivolts/10;
+
+            newSensor.measurements[0].value = temp;
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case DFR_FLAME:
+        {
+            int flamePin;
+           uint32_t raw;
+            uint32_t millivolts;
+
+            if (i == 0)
+            {
+                flamePin = ANALOG1;
+                pinMode(flamePin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_4);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 1)
+            {
+                flamePin = ANALOG2;
+                pinMode(flamePin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_5);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            if (i == 2)
+            {
+                flamePin = ANALOG3;
+                pinMode(flamePin, INPUT);
+                raw = adc1_get_raw(ADC1_CHANNEL_6);
+                millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+            }
+
+            Sensor newSensor = allSensors[DFR_FLAME];
+
+            float temp = millivolts;
+
+            newSensor.measurements[0].value = temp;
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+         default:
             break;
         }
     }
@@ -1055,4 +1243,9 @@ void updateDataNames(std::vector<Sensor> &sensorVector)
             }
         }
     }
+}
+
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }

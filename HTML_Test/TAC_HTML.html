@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta name='format-detection' content='telephone=no'>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1,user-scalable=no' />
+    <title>TeleAgriCulture Board Setup</title>
+    <link rel='icon' type='image/png; base64' sizes='32x32'
+        href='data:image/png;base64,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'>
+    <img title='tac_logo' alt='tac_logo'
+        src='data:image/jpeg;base64,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' />
+    <h3>www.teleagriculture.org</h3>
+    <script>window.addEventListener('load', function () { var now = new Date(); var offset = now.getTimezoneOffset() * 60000; var adjustedDate = new Date(now.getTime() - offset); document.getElementById('set-time').value = adjustedDate.toISOString().substring(0, 16); });</script>
+    <script>function chooseUploade() { var checked = document.querySelector('input[name=upload]:checked'); var div = document.getElementById('Lora'); var divNTP = document.getElementById('use_NTP'); var divNoNTP = document.getElementById('no_NTP'); var divGSM = document.getElementById('GSM'); if (checked && checked.value == 'LORA') { div.style.display = 'block'; var checkbox = document.getElementById('use-WPA_enterprise'); checkbox.checked = false; divNTP.style.display = 'none'; divNoNTP.style.display = 'block'; divGSM.style.display = 'none'; } else if (checked && checked.value == 'NO') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; } else if (checked && checked.value == 'GSM') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'block'; } else { div.style.display = 'none'; divNTP.style.display = 'block'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; } }</script>
+    <script
+        type='text/javascript'>function chooseCustomNTP() { var customNtp = document.getElementById('custom_ntp'); var ntpList = document.getElementById('ntp_list'); var checkBox = document.getElementById('custom_ntp_enable'); if (checkBox.checked == true) { customNtp.style.display = 'block'; ntpList.style.display = 'none'; } else { customNtp.style.display = 'none'; ntpList.style.display = 'block'; } }</script>
+    <script
+        type='text/javascript'>function chooseNTP() { var useNTP = document.getElementById('ntp_Settings'); var noNTP = document.getElementById('no_NTP'); var checkBox = document.getElementById('use-ntp-server'); if (checkBox.checked == true) { useNTP.style.display = 'block'; noNTP.style.display = 'none'; } else { useNTP.style.display = 'none'; noNTP.style.display = 'block'; } }</script>
+    <script type='text/javascript'>document.addEventListener('DOMContentLoaded', function () { chooseNTP(); });</script>
+    <style>
+        strong {
+            color: red;
+        }
+    </style>
+    <style>
+        .c,
+        body {
+            text-align: center;
+            font-family: verdana
+        }
+
+        div,
+        input,
+        select {
+            padding: 5px;
+            font-size: 1em;
+            margin: 5px 0;
+            box-sizing: border-box
+        }
+
+        input,
+        button,
+        select,
+        .msg {
+            border-radius: .3rem;
+            width: 100%
+        }
+
+        input[type=radio],
+        input[type=checkbox] {
+            width: auto
+        }
+
+        button,
+        input[type='button'],
+        input[type='submit'] {
+            cursor: pointer;
+            border: 0;
+            background-color: #1fa3ec;
+            color: #fff;
+            line-height: 2.4rem;
+            font-size: 1.2rem;
+            width: 100%
+        }
+
+        input[type='file'] {
+            border: 1px solid #1fa3ec
+        }
+
+        .wrap {
+            text-align: left;
+            display: inline-block;
+            min-width: 260px;
+            max-width: 500px
+        }
+
+        a {
+            color: #000;
+            font-weight: 700;
+            text-decoration: none
+        }
+
+        a:hover {
+            color: #1fa3ec;
+            text-decoration: underline
+        }
+
+        .q {
+            height: 16px;
+            margin: 0;
+            padding: 0 5px;
+            text-align: right;
+            min-width: 38px;
+            float: right
+        }
+
+        .q.q-0:after {
+            background-position-x: 0
+        }
+
+        .q.q-1:after {
+            background-position-x: -16px
+        }
+
+        .q.q-2:after {
+            background-position-x: -32px
+        }
+
+        .q.q-3:after {
+            background-position-x: -48px
+        }
+
+        .q.q-4:after {
+            background-position-x: -64px
+        }
+
+        .q.l:before {
+            background-position-x: -80px;
+            padding-right: 5px
+        }
+
+        .ql .q {
+            float: left
+        }
+
+        .q:after,
+        .q:before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            background-repeat: no-repeat;
+            background-position: 16px 0;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAQCAMAAADeZIrLAAAAJFBMVEX///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADHJj5lAAAAC3RSTlMAIjN3iJmqu8zd7vF8pzcAAABsSURBVHja7Y1BCsAwCASNSVo3/v+/BUEiXnIoXkoX5jAQMxTHzK9cVSnvDxwD8bFx8PhZ9q8FmghXBhqA1faxk92PsxvRc2CCCFdhQCbRkLoAQ3q/wWUBqG35ZxtVzW4Ed6LngPyBU2CobdIDQ5oPWI5nCUwAAAAASUVORK5CYII=');
+        }
+
+        @media (-webkit-min-device-pixel-ratio: 2),
+        (min-resolution: 192dpi) {
+
+            .q:before,
+            .q:after {
+                background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALwAAAAgCAMAAACfM+KhAAAALVBMVEX///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAOrOgAAAADnRSTlMAESIzRGZ3iJmqu8zd7gKjCLQAAACmSURBVHgB7dDBCoMwEEXRmKlVY3L//3NLhyzqIqSUggy8uxnhCR5Mo8xLt+14aZ7wwgsvvPA/ofv9+44334UXXngvb6XsFhO/VoC2RsSv9J7x8BnYLW+AjT56ud/uePMdb7IP8Bsc/e7h8Cfk912ghsNXWPpDC4hvN+D1560A1QPORyh84VKLjjdvfPFm++i9EWq0348XXnjhhT+4dIbCW+WjZim9AKk4UZMnnCEuAAAAAElFTkSuQmCC');
+                background-size: 95px 16px;
+            }
+        }
+
+        .msg {
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #eee;
+            border-left-width: 5px;
+            border-left-color: #777
+        }
+
+        .msg h4 {
+            margin-top: 0;
+            margin-bottom: 5px
+        }
+
+        .msg.P {
+            border-left-color: #1fa3ec
+        }
+
+        .msg.P h4 {
+            color: #1fa3ec
+        }
+
+        .msg.D {
+            border-left-color: #dc3630
+        }
+
+        .msg.D h4 {
+            color: #dc3630
+        }
+
+        .msg.S {
+            border-left-color: #5cb85c
+        }
+
+        .msg.S h4 {
+            color: #5cb85c
+        }
+
+        dt {
+            font-weight: bold
+        }
+
+        dd {
+            margin: 0;
+            padding: 0 0 0.5em 0;
+            min-height: 12px
+        }
+
+        td {
+            vertical-align: top;
+        }
+
+        .h {
+            display: none
+        }
+
+        button {
+            transition: 0s opacity;
+            transition-delay: 3s;
+            transition-duration: 0s;
+            cursor: pointer
+        }
+
+        button.D {
+            background-color: #dc3630
+        }
+
+        button:active {
+            opacity: 50% !important;
+            cursor: wait;
+            transition-delay: 0s
+        }
+
+        body.invert,
+        body.invert a,
+        body.invert h1 {
+            background-color: #060606;
+            color: #fff;
+        }
+
+        body.invert .msg {
+            color: #fff;
+            background-color: #282828;
+            border-top: 1px solid #555;
+            border-right: 1px solid #555;
+            border-bottom: 1px solid #555;
+        }
+
+        body.invert .q[role=img] {
+            -webkit-filter: invert(1);
+            filter: invert(1);
+        }
+
+        :disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body class='invert'>
+    <div class='wrap'>
+        <h2>Board Setup</h2>Firmware Version 1.10<BR><BR>Board MAC Address: 34:85:18:89:07:60<BR><BR><iframe
+            name='dummyframe' id='dummyframe' style='display: none;'></iframe>
+        <div>
+            <form action='/save-tz' target='dummyframe' method='POST'>
+                <legend>Please select your data upload method:</legend>
+                <table style='width:100%'>
+                    <tr>
+                        <td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()'
+                                checked /><label for='upload1'> WiFi</label></td>
+                        <td><input type='radio' id='loracheck' name='upload' value='LORA'
+                                onchange='chooseUploade()' /><label for='upload2'> LoRa</label></td>
+                        <td><input type='radio' id='nouploadcheck' name='upload' value='NO'
+                                onchange='chooseUploade()' /><label for='upload3'> NO upload</label></td>
+                        <td><input type='radio' id='gsmcheck' name='upload' value='GSM'
+                                onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>
+                    </tr>
+                </table><br><input type='checkbox' id='battery' name='battery' value='1' /><label for='battery'> powerd
+                    by battery</label><br><input type='checkbox' id='display' name='display' value='1' checked /><label
+                    for='display'> show display</label><br><input type='checkbox' id='logtosd' name='logtosd' value='1'
+                    checked /><label for='logtosd'> Log to SD Card</label><br><BR><BR><label for='up_interval'>Upload
+                    Interval:</label><select id='up_interval' name='up_interval'>
+                    <option value=2>2 min</option>
+                    <option value=10>10 min</option>
+                    <option value=30>30 min</option>
+                    <option value=60>60 min</option>
+                </select><br>
+        </div><BR>
+        <div><BR><b>WiFi Upload Data</b>
+            <div><label for='BoardID'>Board ID:</label><input type='text' id='BoardID' name='BoardID'
+                    pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=1014 required><label
+                    for='API_KEY'>API KEY:</label><input type='text' name='API_KEY' pattern='^[A-Za-z0-9]{32}$'
+                    title=' Enter Bearer token' value=fkYauyaxirkYjSKrzR8lzKuVnak4l2nV required>
+                <div id='Lora' style='display:none'><br><BR><b>LoRa TTN Data</b><BR><strong>EU 868
+                        MHz</strong><BR><BR><label for='OTAA_APPEUI'>OTAA_APPEUI:</label><input type='text'
+                        id='OTAA_APPEUI' name='OTAA_APPEUI' pattern='^[0-9A-F]{16}$'
+                        title='Enter 8 hexadecimal digits without any prefix or separator' value=0000000000000000
+                        required><label for='OTAA_DEVEUI'>OTAA_DEVEUI:</label><input type='text' id='OTAA_DEVEUI'
+                        name='OTAA_DEVEUI' pattern='^[0-9A-F]{16}$'
+                        title='Enter 8 hexadecimal digits without any prefix or separator' value=70B3D57ED005D967
+                        required><label for='OTAA_APPKEY'>OTAA_APPKEY:</label><input type='text' id='OTAA_APPKEY'
+                        name='OTAA_APPKEY' pattern='^[0-9A-F]{32}$'
+                        title='Enter 16 hexadecimal digits without any prefix or separator'
+                        value=EDA96CD96FC5A6C31CCC77D65284C6A4 required><BR><input type='checkbox' id='ADR' name='ADR'
+                        value='1' /><label for='ADR'> use ADR</label></div><BR>
+                <div id='GSM' style='display:none'><br><BR><b>GSM Data</b><label for='apn'>APN:</label><input
+                        type='text' id='apn' name='apn' value=null required><label for='gprs_user'>GPRS
+                        User:</label><input type='text' id='gprs_user' name='gprs_user' value=null required><label
+                        for='gprs_pass'>GPRS Password:</label><input type='password' id='gprs_pass' name='gprs_pass'
+                        value=null required></div><BR><BR>
+                <h2>Connectors:</h2>
+                <table style='width:100%'>
+                    <tbody>
+                        <tr>
+                            <td colspan='2'>
+                                <h3>I2C Connectors</h3>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for='i2c_1'>I2C_1</label><select id='I2C_1' name='i2c_1'>
+                                    <option value='-1'>NO</option>
+                                    <option value='0'>BMP_280</option>
+                                    <option value='1'>Level</option>
+                                    <option value='2'>VELM7700</option>
+                                    <option value='10'>RTC DS3231</option>
+                                    <option value='14' selected>BME_280</option>
+                                    <option value='15'>ADS1115</option>
+                                </select></td>
+                            <td><label for='i2c_3'>I2C_3</label><select id='I2C_3' name='i2c_3'>
+                                    <option value='-1'>NO</option>
+                                    <option value='0'>BMP_280</option>
+                                    <option value='1'>Level</option>
+                                    <option value='2'>VELM7700</option>
+                                    <option value='10'>RTC DS3231</option>
+                                    <option value='14'>BME_280</option>
+                                    <option value='15'>ADS1115</option>
+                                </select></td>
+                        </tr>
+                        <tr>
+                            <td><label for='i2c_2'>I2C_2</label><select id='I2C_2' name='i2c_2'>
+                                    <option value='-1'>NO</option>
+                                    <option value='0'>BMP_280</option>
+                                    <option value='1'>Level</option>
+                                    <option value='2'>VELM7700</option>
+                                    <option value='10'>RTC DS3231</option>
+                                    <option value='14'>BME_280</option>
+                                    <option value='15'>ADS1115</option>
+                                </select></td>
+                            <td><label for='i2c_4'>I2C_4</label><select id='I2C_4' name='i2c_4'>
+                                    <option value='-1'>NO</option>
+                                    <option value='0'>BMP_280</option>
+                                    <option value='1'>Level</option>
+                                    <option value='2'>VELM7700</option>
+                                    <option value='10'>RTC DS3231</option>
+                                    <option value='14'>BME_280</option>
+                                    <option value='15'>ADS1115</option>
+                                </select></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table style='width:100%'>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <h3>ADC Connectors</h3>
+                            </td>
+                            <td>
+                                <h3>1-Wire Connectors</h3>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for='adc_1'>ADC_1</label><select id='ADC_1' name='adc_1'>
+                                    <option value='-1'>NO</option>
+                                    <option value='3'>TDS</option>
+                                    <option value='4'>CAP Soil</option>
+                                    <option value='5'>CAP Groove</option>
+                                    <option value='16'>Sound LVL</option>
+                                    <option value='17'>Pressure LVL</option>
+                                    <option value='18'>DFRobot UV</option>
+                                    <option value='19'>DFR LIGHT</option>
+                                    <option value='20'>DFR LM35</option>
+                                    <option value='21'>DFR FLAME</option>
+                                </select></td>
+                            <td><label for='onewire_1'>1-Wire_1</label><select id='onewire_1' name='onewire_1'>
+                                    <option value='-1'>NO</option>
+                                    <option value='6'>DHT22</option>
+                                    <option value='7'>DS18B20</option>
+                                </select></td>
+                        </tr>
+                        <tr>
+                            <td><label for='adc_2'>ADC_2</label><select id='ADC_2' name='adc_2'>
+                                    <option value='-1'>NO</option>
+                                    <option value='3'>TDS</option>
+                                    <option value='4'>CAP Soil</option>
+                                    <option value='5'>CAP Groove</option>
+                                    <option value='16'>Sound LVL</option>
+                                    <option value='17'>Pressure LVL</option>
+                                    <option value='18'>DFRobot UV</option>
+                                    <option value='19'>DFR LIGHT</option>
+                                    <option value='20'>DFR LM35</option>
+                                    <option value='21'>DFR FLAME</option>
+                                </select></td>
+                            <td><label for='onewire_2'>1-Wire_2</label><select id='onewire_2' name='onewire_2'>
+                                    <option value='-1'>NO</option>
+                                    <option value='6'>DHT22</option>
+                                    <option value='7'>DS18B20</option>
+                                </select></td>
+                        </tr>
+                        <tr>
+                            <td><label for='adc_3'>ADC_3</label><select id='ADC_3' name='adc_3'>
+                                    <option value='-1'>NO</option>
+                                    <option value='3'>TDS</option>
+                                    <option value='4'>CAP Soil</option>
+                                    <option value='5'>CAP Groove</option>
+                                    <option value='16'>Sound LVL</option>
+                                    <option value='17'>Pressure LVL</option>
+                                    <option value='18'>DFRobot UV</option>
+                                    <option value='19'>DFR LIGHT</option>
+                                    <option value='20'>DFR LM35</option>
+                                    <option value='21'>DFR FLAME</option>
+                                </select></td>
+                            <td><label for='onewire_3'>1-Wire_3</label><select id='onewire_3' name='onewire_3'>
+                                    <option value='-1'>NO</option>
+                                    <option value='6'>DHT22</option>
+                                    <option value='7'>DS18B20</option>
+                                </select></td>
+                        </tr>
+                    </tbody><label for='I2C_5V'>I2C_5V Con</label><select id='I2C_5V' name='I2C_5V'>
+                        <option value='-1'>NO</option>
+                        <option value='8'>MultiGasV2</option>
+                        <option value='9'>MultiGasV1</option>
+                    </select></td>
+                </table><BR><BR>
+                <h2>Time Settings</h2><label for='ntp-server'>System Time <input readonly style=width:auto
+                        name='system-time' type='datetime-local' value='1970-01-01T00:20'> <button
+                        onclick=location.reload() style=width:auto type=button> Refresh </button></label><br><label
+                    for='timezone'>Time Zone</label><select id='timezone' name='timezone'>
+                    <option value='0'>Africa/Abidjan</option>
+                    <option value='2'>Africa/Accra</option>
+                    <option value='4'>Africa/Addis_Ababa</option>
+                    <option value='6'>Africa/Algiers</option>
+                    <option value='8'>Africa/Asmara</option>
+                    <option value='10'>Africa/Bamako</option>
+                    <option value='12'>Africa/Bangui</option>
+                    <option value='14'>Africa/Banjul</option>
+                    <option value='16'>Africa/Bissau</option>
+                    <option value='18'>Africa/Blantyre</option>
+                    <option value='20'>Africa/Brazzaville</option>
+                    <option value='22'>Africa/Bujumbura</option>
+                    <option value='24'>Africa/Cairo</option>
+                    <option value='26'>Africa/Casablanca</option>
+                    <option value='28'>Africa/Ceuta</option>
+                    <option value='30'>Africa/Conakry</option>
+                    <option value='32'>Africa/Dakar</option>
+                    <option value='34'>Africa/Dar_es_Salaam</option>
+                    <option value='36'>Africa/Djibouti</option>
+                    <option value='38'>Africa/Douala</option>
+                    <option value='40'>Africa/El_Aaiun</option>
+                    <option value='42'>Africa/Freetown</option>
+                    <option value='44'>Africa/Gaborone</option>
+                    <option value='46'>Africa/Harare</option>
+                    <option value='48'>Africa/Johannesburg</option>
+                    <option value='50'>Africa/Juba</option>
+                    <option value='52'>Africa/Kampala</option>
+                    <option value='54'>Africa/Khartoum</option>
+                    <option value='56'>Africa/Kigali</option>
+                    <option value='58'>Africa/Kinshasa</option>
+                    <option value='60'>Africa/Lagos</option>
+                    <option value='62'>Africa/Libreville</option>
+                    <option value='64'>Africa/Lome</option>
+                    <option value='66'>Africa/Luanda</option>
+                    <option value='68'>Africa/Lubumbashi</option>
+                    <option value='70'>Africa/Lusaka</option>
+                    <option value='72'>Africa/Malabo</option>
+                    <option value='74'>Africa/Maputo</option>
+                    <option value='76'>Africa/Maseru</option>
+                    <option value='78'>Africa/Mbabane</option>
+                    <option value='80'>Africa/Mogadishu</option>
+                    <option value='82'>Africa/Monrovia</option>
+                    <option value='84'>Africa/Nairobi</option>
+                    <option value='86'>Africa/Ndjamena</option>
+                    <option value='88'>Africa/Niamey</option>
+                    <option value='90'>Africa/Nouakchott</option>
+                    <option value='92'>Africa/Ouagadougou</option>
+                    <option value='94'>Africa/Porto-Novo</option>
+                    <option value='96'>Africa/Sao_Tome</option>
+                    <option value='98'>Africa/Tripoli</option>
+                    <option value='100'>Africa/Tunis</option>
+                    <option value='102'>Africa/Windhoek</option>
+                    <option value='104'>America/Adak</option>
+                    <option value='106'>America/Anchorage</option>
+                    <option value='108'>America/Anguilla</option>
+                    <option value='110'>America/Antigua</option>
+                    <option value='112'>America/Araguaina</option>
+                    <option value='114'>America/Argentina/Buenos_Aires</option>
+                    <option value='116'>America/Argentina/Catamarca</option>
+                    <option value='118'>America/Argentina/Cordoba</option>
+                    <option value='120'>America/Argentina/Jujuy</option>
+                    <option value='122'>America/Argentina/La_Rioja</option>
+                    <option value='124'>America/Argentina/Mendoza</option>
+                    <option value='126'>America/Argentina/Rio_Gallegos</option>
+                    <option value='128'>America/Argentina/Salta</option>
+                    <option value='130'>America/Argentina/San_Juan</option>
+                    <option value='132'>America/Argentina/San_Luis</option>
+                    <option value='134'>America/Argentina/Tucuman</option>
+                    <option value='136'>America/Argentina/Ushuaia</option>
+                    <option value='138'>America/Aruba</option>
+                    <option value='140'>America/Asuncion</option>
+                    <option value='142'>America/Atikokan</option>
+                    <option value='144'>America/Bahia</option>
+                    <option value='146'>America/Bahia_Banderas</option>
+                    <option value='148'>America/Barbados</option>
+                    <option value='150'>America/Belem</option>
+                    <option value='152'>America/Belize</option>
+                    <option value='154'>America/Blanc-Sablon</option>
+                    <option value='156'>America/Boa_Vista</option>
+                    <option value='158'>America/Bogota</option>
+                    <option value='160'>America/Boise</option>
+                    <option value='162'>America/Cambridge_Bay</option>
+                    <option value='164'>America/Campo_Grande</option>
+                    <option value='166'>America/Cancun</option>
+                    <option value='168'>America/Caracas</option>
+                    <option value='170'>America/Cayenne</option>
+                    <option value='172'>America/Cayman</option>
+                    <option value='174'>America/Chicago</option>
+                    <option value='176'>America/Chihuahua</option>
+                    <option value='178'>America/Costa_Rica</option>
+                    <option value='180'>America/Creston</option>
+                    <option value='182'>America/Cuiaba</option>
+                    <option value='184'>America/Curacao</option>
+                    <option value='186'>America/Danmarkshavn</option>
+                    <option value='188'>America/Dawson</option>
+                    <option value='190'>America/Dawson_Creek</option>
+                    <option value='192'>America/Denver</option>
+                    <option value='194'>America/Detroit</option>
+                    <option value='196'>America/Dominica</option>
+                    <option value='198'>America/Edmonton</option>
+                    <option value='200'>America/Eirunepe</option>
+                    <option value='202'>America/El_Salvador</option>
+                    <option value='204'>America/Fort_Nelson</option>
+                    <option value='206'>America/Fortaleza</option>
+                    <option value='208'>America/Glace_Bay</option>
+                    <option value='210'>America/Godthab</option>
+                    <option value='212'>America/Goose_Bay</option>
+                    <option value='214'>America/Grand_Turk</option>
+                    <option value='216'>America/Grenada</option>
+                    <option value='218'>America/Guadeloupe</option>
+                    <option value='220'>America/Guatemala</option>
+                    <option value='222'>America/Guayaquil</option>
+                    <option value='224'>America/Guyana</option>
+                    <option value='226'>America/Halifax</option>
+                    <option value='228'>America/Havana</option>
+                    <option value='230'>America/Hermosillo</option>
+                    <option value='232'>America/Indiana/Indianapolis</option>
+                    <option value='234'>America/Indiana/Knox</option>
+                    <option value='236'>America/Indiana/Marengo</option>
+                    <option value='238'>America/Indiana/Petersburg</option>
+                    <option value='240'>America/Indiana/Tell_City</option>
+                    <option value='242'>America/Indiana/Vevay</option>
+                    <option value='244'>America/Indiana/Vincennes</option>
+                    <option value='246'>America/Indiana/Winamac</option>
+                    <option value='248'>America/Inuvik</option>
+                    <option value='250'>America/Iqaluit</option>
+                    <option value='252'>America/Jamaica</option>
+                    <option value='254'>America/Juneau</option>
+                    <option value='256'>America/Kentucky/Louisville</option>
+                    <option value='258'>America/Kentucky/Monticello</option>
+                    <option value='260'>America/Kralendijk</option>
+                    <option value='262'>America/La_Paz</option>
+                    <option value='264'>America/Lima</option>
+                    <option value='266'>America/Los_Angeles</option>
+                    <option value='268'>America/Lower_Princes</option>
+                    <option value='270'>America/Maceio</option>
+                    <option value='272'>America/Managua</option>
+                    <option value='274'>America/Manaus</option>
+                    <option value='276'>America/Marigot</option>
+                    <option value='278'>America/Martinique</option>
+                    <option value='280'>America/Matamoros</option>
+                    <option value='282'>America/Mazatlan</option>
+                    <option value='284'>America/Menominee</option>
+                    <option value='286'>America/Merida</option>
+                    <option value='288'>America/Metlakatla</option>
+                    <option value='290'>America/Mexico_City</option>
+                    <option value='292'>America/Miquelon</option>
+                    <option value='294'>America/Moncton</option>
+                    <option value='296'>America/Monterrey</option>
+                    <option value='298'>America/Montevideo</option>
+                    <option value='300'>America/Montreal</option>
+                    <option value='302'>America/Montserrat</option>
+                    <option value='304'>America/Nassau</option>
+                    <option value='306'>America/New_York</option>
+                    <option value='308'>America/Nipigon</option>
+                    <option value='310'>America/Nome</option>
+                    <option value='312'>America/Noronha</option>
+                    <option value='314'>America/North_Dakota/Beulah</option>
+                    <option value='316'>America/North_Dakota/Center</option>
+                    <option value='318'>America/North_Dakota/New_Salem</option>
+                    <option value='320'>America/Nuuk</option>
+                    <option value='322'>America/Ojinaga</option>
+                    <option value='324'>America/Panama</option>
+                    <option value='326'>America/Pangnirtung</option>
+                    <option value='328'>America/Paramaribo</option>
+                    <option value='330'>America/Phoenix</option>
+                    <option value='332'>America/Port-au-Prince</option>
+                    <option value='334'>America/Port_of_Spain</option>
+                    <option value='336'>America/Porto_Velho</option>
+                    <option value='338'>America/Puerto_Rico</option>
+                    <option value='340'>America/Punta_Arenas</option>
+                    <option value='342'>America/Rainy_River</option>
+                    <option value='344'>America/Rankin_Inlet</option>
+                    <option value='346'>America/Recife</option>
+                    <option value='348'>America/Regina</option>
+                    <option value='350'>America/Resolute</option>
+                    <option value='352'>America/Rio_Branco</option>
+                    <option value='354'>America/Santarem</option>
+                    <option value='356'>America/Santiago</option>
+                    <option value='358'>America/Santo_Domingo</option>
+                    <option value='360'>America/Sao_Paulo</option>
+                    <option value='362'>America/Scoresbysund</option>
+                    <option value='364'>America/Sitka</option>
+                    <option value='366'>America/St_Barthelemy</option>
+                    <option value='368'>America/St_Johns</option>
+                    <option value='370'>America/St_Kitts</option>
+                    <option value='372'>America/St_Lucia</option>
+                    <option value='374'>America/St_Thomas</option>
+                    <option value='376'>America/St_Vincent</option>
+                    <option value='378'>America/Swift_Current</option>
+                    <option value='380'>America/Tegucigalpa</option>
+                    <option value='382'>America/Thule</option>
+                    <option value='384'>America/Thunder_Bay</option>
+                    <option value='386'>America/Tijuana</option>
+                    <option value='388'>America/Toronto</option>
+                    <option value='390'>America/Tortola</option>
+                    <option value='392'>America/Vancouver</option>
+                    <option value='394'>America/Whitehorse</option>
+                    <option value='396'>America/Winnipeg</option>
+                    <option value='398'>America/Yakutat</option>
+                    <option value='400'>America/Yellowknife</option>
+                    <option value='402'>Antarctica/Casey</option>
+                    <option value='404'>Antarctica/Davis</option>
+                    <option value='406'>Antarctica/DumontDUrville</option>
+                    <option value='408'>Antarctica/Macquarie</option>
+                    <option value='410'>Antarctica/Mawson</option>
+                    <option value='412'>Antarctica/McMurdo</option>
+                    <option value='414'>Antarctica/Palmer</option>
+                    <option value='416'>Antarctica/Rothera</option>
+                    <option value='418'>Antarctica/Syowa</option>
+                    <option value='420'>Antarctica/Troll</option>
+                    <option value='422'>Antarctica/Vostok</option>
+                    <option value='424'>Arctic/Longyearbyen</option>
+                    <option value='426'>Asia/Aden</option>
+                    <option value='428'>Asia/Almaty</option>
+                    <option value='430'>Asia/Amman</option>
+                    <option value='432'>Asia/Anadyr</option>
+                    <option value='434'>Asia/Aqtau</option>
+                    <option value='436'>Asia/Aqtobe</option>
+                    <option value='438'>Asia/Ashgabat</option>
+                    <option value='440'>Asia/Atyrau</option>
+                    <option value='442'>Asia/Baghdad</option>
+                    <option value='444'>Asia/Bahrain</option>
+                    <option value='446'>Asia/Baku</option>
+                    <option value='448'>Asia/Bangkok</option>
+                    <option value='450'>Asia/Barnaul</option>
+                    <option value='452'>Asia/Beirut</option>
+                    <option value='454'>Asia/Bishkek</option>
+                    <option value='456'>Asia/Brunei</option>
+                    <option value='458'>Asia/Chita</option>
+                    <option value='460'>Asia/Choibalsan</option>
+                    <option value='462'>Asia/Colombo</option>
+                    <option value='464'>Asia/Damascus</option>
+                    <option value='466'>Asia/Dhaka</option>
+                    <option value='468'>Asia/Dili</option>
+                    <option value='470'>Asia/Dubai</option>
+                    <option value='472'>Asia/Dushanbe</option>
+                    <option value='474'>Asia/Famagusta</option>
+                    <option value='476'>Asia/Gaza</option>
+                    <option value='478'>Asia/Hebron</option>
+                    <option value='480'>Asia/Ho_Chi_Minh</option>
+                    <option value='482'>Asia/Hong_Kong</option>
+                    <option value='484'>Asia/Hovd</option>
+                    <option value='486'>Asia/Irkutsk</option>
+                    <option value='488'>Asia/Jakarta</option>
+                    <option value='490'>Asia/Jayapura</option>
+                    <option value='492'>Asia/Jerusalem</option>
+                    <option value='494'>Asia/Kabul</option>
+                    <option value='496'>Asia/Kamchatka</option>
+                    <option value='498'>Asia/Karachi</option>
+                    <option value='500'>Asia/Kathmandu</option>
+                    <option value='502'>Asia/Khandyga</option>
+                    <option value='504'>Asia/Kolkata</option>
+                    <option value='506'>Asia/Krasnoyarsk</option>
+                    <option value='508'>Asia/Kuala_Lumpur</option>
+                    <option value='510'>Asia/Kuching</option>
+                    <option value='512'>Asia/Kuwait</option>
+                    <option value='514'>Asia/Macau</option>
+                    <option value='516'>Asia/Magadan</option>
+                    <option value='518'>Asia/Makassar</option>
+                    <option value='520'>Asia/Manila</option>
+                    <option value='522'>Asia/Muscat</option>
+                    <option value='524'>Asia/Nicosia</option>
+                    <option value='526'>Asia/Novokuznetsk</option>
+                    <option value='528'>Asia/Novosibirsk</option>
+                    <option value='530'>Asia/Omsk</option>
+                    <option value='532'>Asia/Oral</option>
+                    <option value='534'>Asia/Phnom_Penh</option>
+                    <option value='536'>Asia/Pontianak</option>
+                    <option value='538'>Asia/Pyongyang</option>
+                    <option value='540'>Asia/Qatar</option>
+                    <option value='542'>Asia/Qyzylorda</option>
+                    <option value='544'>Asia/Riyadh</option>
+                    <option value='546'>Asia/Sakhalin</option>
+                    <option value='548'>Asia/Samarkand</option>
+                    <option value='550'>Asia/Seoul</option>
+                    <option value='552'>Asia/Shanghai</option>
+                    <option value='554'>Asia/Singapore</option>
+                    <option value='556'>Asia/Srednekolymsk</option>
+                    <option value='558'>Asia/Taipei</option>
+                    <option value='560'>Asia/Tashkent</option>
+                    <option value='562'>Asia/Tbilisi</option>
+                    <option value='564'>Asia/Tehran</option>
+                    <option value='566'>Asia/Thimphu</option>
+                    <option value='568'>Asia/Tokyo</option>
+                    <option value='570'>Asia/Tomsk</option>
+                    <option value='572'>Asia/Ulaanbaatar</option>
+                    <option value='574'>Asia/Urumqi</option>
+                    <option value='576'>Asia/Ust-Nera</option>
+                    <option value='578'>Asia/Vientiane</option>
+                    <option value='580'>Asia/Vladivostok</option>
+                    <option value='582'>Asia/Yakutsk</option>
+                    <option value='584'>Asia/Yangon</option>
+                    <option value='586'>Asia/Yekaterinburg</option>
+                    <option value='588'>Asia/Yerevan</option>
+                    <option value='590'>Atlantic/Azores</option>
+                    <option value='592'>Atlantic/Bermuda</option>
+                    <option value='594'>Atlantic/Canary</option>
+                    <option value='596'>Atlantic/Cape_Verde</option>
+                    <option value='598'>Atlantic/Faroe</option>
+                    <option value='600'>Atlantic/Madeira</option>
+                    <option value='602'>Atlantic/Reykjavik</option>
+                    <option value='604'>Atlantic/South_Georgia</option>
+                    <option value='606'>Atlantic/St_Helena</option>
+                    <option value='608'>Atlantic/Stanley</option>
+                    <option value='610'>Australia/Adelaide</option>
+                    <option value='612'>Australia/Brisbane</option>
+                    <option value='614'>Australia/Broken_Hill</option>
+                    <option value='616'>Australia/Currie</option>
+                    <option value='618'>Australia/Darwin</option>
+                    <option value='620'>Australia/Eucla</option>
+                    <option value='622'>Australia/Hobart</option>
+                    <option value='624'>Australia/Lindeman</option>
+                    <option value='626'>Australia/Lord_Howe</option>
+                    <option value='628'>Australia/Melbourne</option>
+                    <option value='630'>Australia/Perth</option>
+                    <option value='632'>Australia/Sydney</option>
+                    <option value='634'>Etc/GMT</option>
+                    <option value='636'>Etc/GMT+0</option>
+                    <option value='638'>Etc/GMT+1</option>
+                    <option value='640'>Etc/GMT+10</option>
+                    <option value='642'>Etc/GMT+11</option>
+                    <option value='644'>Etc/GMT+12</option>
+                    <option value='646'>Etc/GMT+2</option>
+                    <option value='648'>Etc/GMT+3</option>
+                    <option value='650'>Etc/GMT+4</option>
+                    <option value='652'>Etc/GMT+5</option>
+                    <option value='654'>Etc/GMT+6</option>
+                    <option value='656'>Etc/GMT+7</option>
+                    <option value='658'>Etc/GMT+8</option>
+                    <option value='660'>Etc/GMT+9</option>
+                    <option value='662'>Etc/GMT-0</option>
+                    <option value='664'>Etc/GMT-1</option>
+                    <option value='666'>Etc/GMT-10</option>
+                    <option value='668'>Etc/GMT-11</option>
+                    <option value='670'>Etc/GMT-12</option>
+                    <option value='672'>Etc/GMT-13</option>
+                    <option value='674'>Etc/GMT-14</option>
+                    <option value='676'>Etc/GMT-2</option>
+                    <option value='678'>Etc/GMT-3</option>
+                    <option value='680'>Etc/GMT-4</option>
+                    <option value='682'>Etc/GMT-5</option>
+                    <option value='684'>Etc/GMT-6</option>
+                    <option value='686'>Etc/GMT-7</option>
+                    <option value='688'>Etc/GMT-8</option>
+                    <option value='690'>Etc/GMT-9</option>
+                    <option value='692'>Etc/GMT0</option>
+                    <option value='694'>Etc/Greenwich</option>
+                    <option value='696'>Etc/UCT</option>
+                    <option value='698'>Etc/UTC</option>
+                    <option value='700'>Etc/Universal</option>
+                    <option value='702'>Etc/Zulu</option>
+                    <option value='704'>Europe/Amsterdam</option>
+                    <option value='706'>Europe/Andorra</option>
+                    <option value='708'>Europe/Astrakhan</option>
+                    <option value='710'>Europe/Athens</option>
+                    <option value='712'>Europe/Belgrade</option>
+                    <option value='714'>Europe/Berlin</option>
+                    <option value='716'>Europe/Bratislava</option>
+                    <option value='718'>Europe/Brussels</option>
+                    <option value='720'>Europe/Bucharest</option>
+                    <option value='722'>Europe/Budapest</option>
+                    <option value='724'>Europe/Busingen</option>
+                    <option value='726'>Europe/Chisinau</option>
+                    <option value='728'>Europe/Copenhagen</option>
+                    <option value='730'>Europe/Dublin</option>
+                    <option value='732'>Europe/Gibraltar</option>
+                    <option value='734'>Europe/Guernsey</option>
+                    <option value='736'>Europe/Helsinki</option>
+                    <option value='738'>Europe/Isle_of_Man</option>
+                    <option value='740'>Europe/Istanbul</option>
+                    <option value='742'>Europe/Jersey</option>
+                    <option value='744'>Europe/Kaliningrad</option>
+                    <option value='746'>Europe/Kiev</option>
+                    <option value='748'>Europe/Kirov</option>
+                    <option value='750'>Europe/Lisbon</option>
+                    <option value='752'>Europe/Ljubljana</option>
+                    <option value='754'>Europe/London</option>
+                    <option value='756'>Europe/Luxembourg</option>
+                    <option value='758'>Europe/Madrid</option>
+                    <option value='760'>Europe/Malta</option>
+                    <option value='762'>Europe/Mariehamn</option>
+                    <option value='764'>Europe/Minsk</option>
+                    <option value='766'>Europe/Monaco</option>
+                    <option value='768'>Europe/Moscow</option>
+                    <option value='770'>Europe/Oslo</option>
+                    <option value='772'>Europe/Paris</option>
+                    <option value='774'>Europe/Podgorica</option>
+                    <option value='776'>Europe/Prague</option>
+                    <option value='778'>Europe/Riga</option>
+                    <option value='780'>Europe/Rome</option>
+                    <option value='782'>Europe/Samara</option>
+                    <option value='784'>Europe/San_Marino</option>
+                    <option value='786'>Europe/Sarajevo</option>
+                    <option value='788'>Europe/Saratov</option>
+                    <option value='790'>Europe/Simferopol</option>
+                    <option value='792'>Europe/Skopje</option>
+                    <option value='794'>Europe/Sofia</option>
+                    <option value='796'>Europe/Stockholm</option>
+                    <option value='798'>Europe/Tallinn</option>
+                    <option value='800'>Europe/Tirane</option>
+                    <option value='802'>Europe/Ulyanovsk</option>
+                    <option value='804'>Europe/Uzhgorod</option>
+                    <option value='806'>Europe/Vaduz</option>
+                    <option value='808'>Europe/Vatican</option>
+                    <option value='810' selected>Europe/Vienna</option>
+                    <option value='812'>Europe/Vilnius</option>
+                    <option value='814'>Europe/Volgograd</option>
+                    <option value='816'>Europe/Warsaw</option>
+                    <option value='818'>Europe/Zagreb</option>
+                    <option value='820'>Europe/Zaporozhye</option>
+                    <option value='822'>Europe/Zurich</option>
+                    <option value='824'>Indian/Antananarivo</option>
+                    <option value='826'>Indian/Chagos</option>
+                    <option value='828'>Indian/Christmas</option>
+                    <option value='830'>Indian/Cocos</option>
+                    <option value='832'>Indian/Comoro</option>
+                    <option value='834'>Indian/Kerguelen</option>
+                    <option value='836'>Indian/Mahe</option>
+                    <option value='838'>Indian/Maldives</option>
+                    <option value='840'>Indian/Mauritius</option>
+                    <option value='842'>Indian/Mayotte</option>
+                    <option value='844'>Indian/Reunion</option>
+                    <option value='846'>Pacific/Apia</option>
+                    <option value='848'>Pacific/Auckland</option>
+                    <option value='850'>Pacific/Bougainville</option>
+                    <option value='852'>Pacific/Chatham</option>
+                    <option value='854'>Pacific/Chuuk</option>
+                    <option value='856'>Pacific/Easter</option>
+                    <option value='858'>Pacific/Efate</option>
+                    <option value='860'>Pacific/Enderbury</option>
+                    <option value='862'>Pacific/Fakaofo</option>
+                    <option value='864'>Pacific/Fiji</option>
+                    <option value='866'>Pacific/Funafuti</option>
+                    <option value='868'>Pacific/Galapagos</option>
+                    <option value='870'>Pacific/Gambier</option>
+                    <option value='872'>Pacific/Guadalcanal</option>
+                    <option value='874'>Pacific/Guam</option>
+                    <option value='876'>Pacific/Honolulu</option>
+                    <option value='878'>Pacific/Kiritimati</option>
+                    <option value='880'>Pacific/Kosrae</option>
+                    <option value='882'>Pacific/Kwajalein</option>
+                    <option value='884'>Pacific/Majuro</option>
+                    <option value='886'>Pacific/Marquesas</option>
+                    <option value='888'>Pacific/Midway</option>
+                    <option value='890'>Pacific/Nauru</option>
+                    <option value='892'>Pacific/Niue</option>
+                    <option value='894'>Pacific/Norfolk</option>
+                    <option value='896'>Pacific/Noumea</option>
+                    <option value='898'>Pacific/Pago_Pago</option>
+                    <option value='900'>Pacific/Palau</option>
+                    <option value='902'>Pacific/Pitcairn</option>
+                    <option value='904'>Pacific/Pohnpei</option>
+                    <option value='906'>Pacific/Port_Moresby</option>
+                    <option value='908'>Pacific/Rarotonga</option>
+                    <option value='910'>Pacific/Saipan</option>
+                    <option value='912'>Pacific/Tahiti</option>
+                    <option value='914'>Pacific/Tarawa</option>
+                    <option value='916'>Pacific/Tongatapu</option>
+                    <option value='918'>Pacific/Wake</option>
+                    <option value='920'>Pacific/Wallis</option>
+                </select><br>
+                <div id='no_NTP'><label for='set-time'>Set Time <input style=width:auto name='set-time' id='set-time'
+                            type='datetime-local' value='1970-01-01T00:20'></div>
+                <div id='use_NTP'><label for='use-ntp-server'>Enable NTP Client</label> <input value='1' type='checkbox'
+                        name='use-ntp-server' id='use-ntp-server' onchange='chooseNTP()'><br>
+                    <div id='ntp_Settings' style='display:none;'>
+                        <h2>NTP Client Setup</h2><label for='enable-dst'>Auto-adjust clock for DST </label><input
+                            value='1' type='checkbox' name='enable-dst' id='enable-dst' checked><br><label
+                            for='custom_ntp_enable'>Custom NTP Server </label><input value='1' type='checkbox'
+                            name='custom_ntp_enable' id='custom_ntp_enable' onchange='chooseCustomNTP()'><br><br><label
+                            for='ntp-server'>Server:</label>
+                        <div id='custom_ntp' style='display:none;'>please enter a valide NTP Server IP
+                            Address:<br><input type='text' pattern='[A-Za-z0-9\\.]{1,15}'
+                                title='Please enter a valid NTP server address' name='custom_ntp' value='129.6.15.28'>
+                        </div>
+                        <div id='ntp_list'><select id='ntp-server-list' name='ntp-server'>
+                                <option value='0' selected>Global(pool.ntp.org)</option>
+                                <option value='1'>Africa(africa.pool.ntp.org)</option>
+                                <option value='2'>Asia(asia.pool.ntp.org)</option>
+                                <option value='3'>Europe(europe.pool.ntp.org)</option>
+                                <option value='4'>North America(north-america.pool.ntp.org)</option>
+                                <option value='5'>Oceania(oceania.pool.ntp.org)</option>
+                                <option value='6'>South America(south-america.pool.ntp.org)</option>
+                                <option value='7'>Custom NTP Server(129.6.15.28)</option>
+                            </select></div><br><label for='ntp-server-interval'>Sync interval:</label><select
+                            id='ntp-server-interval' name='ntp-server-interval'>
+                            <option value=60>Hourly</option>
+                            <option value=14400>Daily</option>
+                            <option value=10080>Weekly</option>
+                        </select>
+                    </div><br>
+                </div><button type=submit>Submit</button></form>
+            </div><BR>
+        </div>
+</body>
+
+</html>

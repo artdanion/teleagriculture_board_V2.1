@@ -29,13 +29,14 @@
 //      WPA Enterprise works without cert and anonym identity at the moment
 
 //TODO: Battery optimation    ---> uses around 3mA without gas sensor and without display
-//TODO: Sensor test
+//TODO: Sensor test --> ongoing
 
 //TODO: Sensor calibration (hardcoded at the moment)
 
 //TODO: find a I2C Address solution
+//TODO: back channel or Webinterface for LEDs / RGB
 
-/*********************************** VERSION 1.03 ****************************
+/*********************************** VERSION 1.09 ****************************
 /*
  *
  * For defines, GPIOs and implemented Sensors, see /include/sensor_Board.hpp
@@ -109,6 +110,7 @@
 #include <SPI.h>
 #include "driver/i2c.h"
 #include <driver/spi_master.h>
+#include <SD.h>
 
 #include <lmic.h>
 #include <hal/hal.h>
@@ -136,6 +138,8 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 #define DRD_ADDRESS 0
 
+#define DEBUG_PRINT false
+
 #include <ESP_DoubleResetDetector.h>
 #include <Button.h>
 #include <Ticker.h>
@@ -144,6 +148,8 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Adafruit_ST7735.h>
 
+// #define DEBUG_PRINT false
+
 // ----- Deep Sleep related -----//
 #define BUTTON_PIN_BITMASK 0x1      // GPIO 0
 #define uS_TO_S_FACTOR 1000000UL    /* Conversion factor for micro seconds to seconds */
@@ -151,6 +157,7 @@
 #define mS_TO_MIN_FACTOR 60000UL    /* Conversion factor for milli seconds to minutes */
 
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR bool loraJoined = false;
 
 // ----- Deep Sleep LORA related -----//
 RTC_DATA_ATTR u4_t RTC_LORAWAN_netid = 0;
@@ -195,8 +202,10 @@ void checkButton(void);
 void toggleLED(void);
 void startBlinking(void);
 void stopBlinking(void);
+void openConfig(void);
 
 // file and storage functions
+void SD_sendData(void);
 void load_Sensors(void);
 void load_Connectors(void);
 void save_Connectors(void);
@@ -219,6 +228,7 @@ void initVoltsArray();            //   Copyright (c) 2019 Pangodream   	https://
 int getBatteryChargeLevel();      //   Copyright (c) 2019 Pangodream   	https://github.com/pangodream/18650CL
 int getChargeLevel(double volts); //   Copyright (c) 2019 Pangodream   	https://github.com/pangodream/18650CL
 void drawBattery(int x, int y);
+
 void handleRoot(); // WEBSERVER
 void handleNotFound();
 void drawGraph();
@@ -270,9 +280,11 @@ void printHex2(unsigned v);
 
 // ----- Function declaration -----//
 
-// ----- LoRa related -----//
-
+// ----- SPI related -----//
 static const int spiClk = 1000000; // 10 MHz
+SPIClass *spi = NULL;
+
+// ----- LoRa related -----//
 
 // https://www.loratools.nl/#/airtime
 // Saves the LMIC structure during DeepSleep
@@ -280,7 +292,6 @@ RTC_DATA_ATTR lmic_t RTC_LMIC;
 const unsigned TX_INTERVAL = 30U;
 bool loraJoinFailed = false;
 bool loraDataTransmitted = false;
-bool loraJoined = false;
 // ----- LoRa related -----//
 
 // ----- Initialize TFT ----- //
@@ -288,7 +299,9 @@ bool loraJoined = false;
 #define ST7735_TFTHEIGHT 160
 #define background_color 0x07FF
 
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+Adafruit_ST7735 *tft = NULL;
+
+// Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 int backlight_pwm = 250;
 bool displayRefresh = true;
@@ -336,13 +349,13 @@ bool initialState; // state of the LED
 bool ledState = false;
 bool gotoSleep = true;
 bool userWakeup = false;
-bool forceConfig = false;  // if no config file or DoubleReset detected
-bool loraFreshBoot = true; // fresh start - not loading LMIC Config
+bool forceConfig = false; // if no config file or DoubleReset detected
+bool freshBoot = true;    // fresh start - not loading LMIC Config
 
 bool sendDataWifi = false;
 bool sendDataLoRa = false;
 bool no_upload = false;
-bool timeCriticalJobs = false;
+bool useSDCard = false;
 
 // Define a variable to hold the last hour value
 int currentDay;
@@ -379,12 +392,17 @@ void setup()
    pinMode(TFT_BL, OUTPUT);
    pinMode(LED, OUTPUT);
    pinMode(LORA_CS, OUTPUT);
+   pinMode(SPI_CON_CS, OUTPUT);
    pinMode(SW_3V3, OUTPUT);
    pinMode(SW_5V, OUTPUT);
 
-   delay(500);               // for debugging in screen
+   delay(1000); // for debugging in screen
+
    Serial.setTxTimeoutMs(5); // set USB CDC Time TX
    Serial.begin(115200);     // start Serial for debuging
+
+   spi = new SPIClass(HSPI);
+   spi->begin(TFT_SCLK, TFT_MISO, TFT_MOSI, SPI_CON_CS);
 
    analogWrite(TFT_BL, 0); // turn off TFT Backlight
 
@@ -398,9 +416,10 @@ void setup()
    // Increment boot number and print it every reboot
    ++bootCount;
    Serial.println("\nBoot number: " + String(bootCount));
+   Serial.printf("LoRa has joined: %s\n", loraJoined ? "true" : "false");
 
    if (bootCount == 1 || (bootCount % 720) == 0) // new join once every 24h
-      loraFreshBoot = true;
+      freshBoot = true;
    if (bootCount > 60480) // bootCount resets every 84 days
       bootCount = 0;
 
@@ -419,6 +438,24 @@ void setup()
    digitalWrite(SW_3V3, HIGH);
    digitalWrite(LORA_CS, HIGH);
 
+   // print SPIFF files for debugging
+   if (!SPIFFS.begin(true))
+   {
+      Serial.println("Failed to mount SPIFFS file system");
+      return;
+   }
+   // listDir(SPIFFS, "/", 0);
+   // Serial.println();
+
+   load_Sensors();    // Prototypes get loaded
+   load_Connectors(); // Connectors lookup table
+   load_Config();     // load config Data
+
+#if DEBUG_PRINT
+   delay(2000);
+   checkLoadedStuff();
+#endif
+
    /* ------------  Test DATA for connected Sensors  --------------------------
 
       ---> comes from Web Config normaly or out of SPIFF
@@ -428,13 +465,13 @@ void setup()
   I2C_con_table[2] = NO;
   I2C_con_table[3] = NO;
   ADC_con_table[0] = CAP_SOIL;
-  ADC_con_table[1] = TDS;
-  ADC_con_table[2] = TDS;
-  OneWire_con_table[0] = DHT_22;
+  ADC_con_table[1] = NO;
+  ADC_con_table[2] = NO;
+  OneWire_con_table[0] = DS18B20;
   OneWire_con_table[1] = DHT_22;
-  OneWire_con_table[2] = DHT_22;
+  OneWire_con_table[2] = NO;
   SPI_con_table[0] = NO;
-  I2C_5V_con_table[0] = MULTIGAS_V1;
+  I2C_5V_con_table[0] = NO;
   EXTRA_con_table[0] = NO;
   EXTRA_con_table[1] = NO;
 
@@ -444,22 +481,19 @@ void setup()
 
   ---------------------------------------------------------------------------------*/
 
-   // print SPIFF files for debugging
-   if (!SPIFFS.begin(true))
-   {
-      Serial.println("Failed to mount SPIFFS file system");
-      return;
-   }
-   listDir(SPIFFS, "/", 0);
-   Serial.println();
+   /*******************************************************************************
+   ++++++++++++++++ overwrite stored values for debug   +++++++++++++++                */
 
-   load_Sensors();    // Prototypes get loaded
-   load_Connectors(); // Connectors lookup table
-   load_Config();     // loade config Data
+   // upload = "LORA";
+   // upload = "WIFI";
+   // useSDCard = true;
+   // useBattery = true;
+   // useBattery = false;
+
+   /*******************************************************************************
+   ++++++++++++++++ overwrite stored values for debug   +++++++++++++++                */
 
    Wire.setPins(I2C_SDA, I2C_SCL);
-
-   // checkLoadedStuff();  // debugging output
 
    if (!useBattery)
    {
@@ -468,37 +502,40 @@ void setup()
 
    if (useDisplay || forceConfig)
    {
-      // ----- Initiate the TFT display and Start Image----- //
-      tft.initR(INITR_GREENTAB); // work around to set protected offset values
-      tft.initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
+      tft = new Adafruit_ST7735(spi, TFT_CS, TFT_DC, TFT_RST);
+      tft->setSPISpeed(1000000);
 
-      tft.cp437(true);
-      tft.setCursor(0, 0);
-      tft.setRotation(3);
+      // ----- Initiate the TFT display and Start Image----- //
+      tft->initR(INITR_GREENTAB); // work around to set protected offset values
+      tft->initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
+
+      tft->cp437(true);
+      tft->setCursor(0, 0);
+      tft->setRotation(3);
    }
 
    if (useBattery && useDisplay && (!userWakeup))
    {
       analogWrite(TFT_BL, 0); // turn off TFT Backlight
-      tft.fillScreen(ST7735_BLACK);
+      tft->fillScreen(ST7735_BLACK);
    }
 
    if (!useBattery && useDisplay)
    {
       analogWrite(TFT_BL, backlight_pwm); // turn TFT Backlight on
-      tft.fillScreen(background_color);
-      tft.drawRGBBitmap(0, 0, tac_logo, 160, 128);
+      tft->fillScreen(background_color);
+      tft->drawRGBBitmap(0, 0, tac_logo, 160, 128);
    }
 
    if (userWakeup && useDisplay)
    {
       analogWrite(TFT_BL, backlight_pwm); // turn TFT Backlight on
-      tft.fillScreen(ST7735_BLACK);
-      tft.setTextColor(0x9E6F);
-      tft.setFont(&FreeSans9pt7b);
-      tft.setTextSize(1);
-      tft.setCursor(5, 50);
-      tft.print("Wakeup by USER");
+      tft->fillScreen(ST7735_BLACK);
+      tft->setTextColor(0x9E6F);
+      tft->setFont(&FreeSans9pt7b);
+      tft->setTextSize(1);
+      tft->setCursor(5, 50);
+      tft->print("Wakeup by USER");
    }
    // ----- Initiate the TFT display  and Start Image----- //
 
@@ -533,23 +570,37 @@ void setup()
       else
       {
          Serial.println("Connected");
-      }
+         if (useDisplay)
+         {
+            analogWrite(TFT_BL, backlight_pwm); // turn TFT Backlight on
+            tft->fillScreen(ST7735_BLACK);
+            tft->setTextColor(ST7735_ORANGE);
+            tft->setFont(&FreeSans9pt7b);
+            tft->setTextSize(1);
+            tft->setCursor(5, 50);
+            tft->print("WiFi Connected");
+         }
+         if ((WiFi.status() == WL_CONNECTED) && useNTP)
+         {
+            WiFiManagerNS::configTime();
+            WiFiManagerNS::NTP::onTimeAvailable(&on_time_available);
+         }
 
-      if ((WiFi.status() == WL_CONNECTED) && useNTP)
-      {
-         WiFiManagerNS::configTime();
-         WiFiManagerNS::NTP::onTimeAvailable(&on_time_available);
-      }
-
-      if (!useNTP)
-      {
-         String header = get_header();
-         delay(1000);
-         String Time1 = getDateTime(header);
-         setEsp32Time(Time1.c_str());
+         if (!useNTP)
+         {
+            String header = get_header();
+            delay(500);
+            String Time1 = getDateTime(header);
+            setEsp32Time(Time1.c_str());
+         }
       }
 
       stopBlinking();
+   }
+
+   if (forceConfig)
+   {
+      openConfig();
    }
 
    if (upload == "WIFI")
@@ -568,25 +619,78 @@ void setup()
       convertTo_LSB_EUI(OTAA_APPEUI, app_eui);
       convertTo_MSB_APPKEY(OTAA_APPKEY, app_key);
 
-      if (loraFreshBoot == true)
+      // LMIC init
+      os_init();
+
+      if (loraJoined && (!freshBoot)) // new join request every 24h because freshBoot gets reseted
       {
-         // LMIC init
-         os_init();
-         // Reset the MAC state. Session and pending data transfers will be discarded.
-         LMIC_reset();
-         LMIC_setClockError(MAX_CLOCK_ERROR * 5 / 100);
-         loraFreshBoot = false;
+         loadLORA_State(); // load the LMIC settings
+         delay(200);
+
+         if ((RTC_LMIC.seqnoUp != 0) && CFG_LMIC_EU_like) // just for EU
+         {
+            Serial.println("load air time for channels");
+            delay(200);
+            loadLMICFromRTC();
+            delay(200);
+         }
       }
       else
       {
-         loadLORA_State(); // load the LMIC settings
-
-         if (RTC_LMIC.seqnoUp != 0)
-         {
-            loadLMICFromRTC();
-         }
+         // Reset the MAC state. Session and pending data transfers will be discarded.
+         LMIC_reset();
+         LMIC_setClockError(MAX_CLOCK_ERROR * 5 / 100);
+         freshBoot = false;
+         loraJoined = false;
+         // LMIC_startJoining();
       }
-      LMIC_startJoining();
+   }
+
+   if (saveDataSDCard)
+   {
+      digitalWrite(SW_3V3, HIGH);
+      delay(200);
+
+      if (!SD.begin(SPI_CON_CS, *spi))
+      {
+         Serial.println("Card Mount Failed");
+         return;
+      }
+
+      uint8_t cardType = SD.cardType();
+
+      if (cardType == CARD_NONE)
+      {
+         Serial.println("No SD card attached");
+         return;
+      }
+
+      Serial.print("SD Card Type: ");
+      if (cardType == CARD_MMC)
+      {
+         Serial.println("MMC");
+      }
+      else if (cardType == CARD_SD)
+      {
+         Serial.println("SDSC");
+      }
+      else if (cardType == CARD_SDHC)
+      {
+         Serial.println("SDHC");
+      }
+      else
+      {
+         Serial.println("UNKNOWN");
+      }
+
+      uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+      Serial.printf("SD Card Size: %lluMB\n", cardSize);
+
+      SD.end();
+
+      digitalWrite(SW_3V3, LOW);
+
+      saveDataSDCard = true;
    }
 
    if (upload == "NO_UPLOAD")
@@ -596,7 +700,7 @@ void setup()
    {
       WiFi.mode(WIFI_AP_STA);
 
-      WiFi.softAP("TeleAgriCulture Board", "enter123");
+      WiFi.softAP("TeleAgriCulture DB", "enter123");
       IPAddress IP = WiFi.softAPIP();
       Serial.print("AP IP address: ");
       Serial.println(IP);
@@ -622,6 +726,11 @@ void loop()
 
    analogWrite(TFT_BL, backlight_pwm); // Set the backlight brightness of the TFT display
 
+   if (forceConfig)
+   {
+      openConfig();
+   }
+
    time_t rawtime;
    time(&rawtime);
    localtime_r(&rawtime, &timeInfo); // Get the current local time
@@ -629,7 +738,7 @@ void loop()
    currentDay = timeInfo.tm_mday; // Update the current day
 
    // Check if the day has changed and perform time synchronization if required
-   if ((currentDay != lastDay) && (upload == "WIFI") && !(WiFiManagerNS::NTPEnabled))
+   if ((currentDay != lastDay) && (upload == "WIFI") && !(WiFiManagerNS::NTPEnabled) && freshBoot)
    {
       // The day has changed since the last execution of this block
       String header = get_header();
@@ -639,28 +748,34 @@ void loop()
       lastDay = currentDay;        // Update the last day value
    }
 
-   if (forceConfig)
-   {
-      startBlinking(); // Start blinking an LED to indicate configuration mode
-
-      setUPWiFi(); // Set up WiFi connection
-
-      backlight_pwm = 200;
-      analogWrite(TFT_BL, backlight_pwm); // Turn off TFT Backlight
-
-      if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
-      {
-         Serial.println("failed to connect and hit timeout");
-         delay(3000);
-         ESP.restart(); // Failed to connect, restart ESP32
-      }
-      ESP.restart();
-      stopBlinking(); // Stop blinking the LED
-   }
-
    unsigned long currentMillis = millis();
    unsigned long currentMillis_long = millis();
    unsigned long currentMillis_upload = millis();
+
+   // check if its time to uplooad based on interval
+   if (currentMillis_upload - previousMillis_upload >= (upload_interval * mS_TO_MIN_FACTOR))
+   {
+      delay(100);
+
+      if (upload == "NO")
+         no_upload = true; // Set flag to indicate no upload
+
+      if (upload == "WIFI")
+         sendDataWifi = true; // Set flag to send data via WiFi
+
+      if (upload == "LORA" && !useBattery)
+      {
+         if (loraJoined)
+         {
+            sendDataLoRa = true; // Set flag to send data via LoRa
+         }
+      }
+
+      if (saveDataSDCard)
+         useSDCard = true; // Set flag to send data via SDCard
+
+      previousMillis_upload = currentMillis_upload;
+   }
 
    // Perform periodic tasks based on intervals
    if (currentMillis - previousMillis >= interval) // lower tft brightness after 1 min
@@ -673,37 +788,24 @@ void loop()
          gotoSleep = true; // Enable sleep mode if using WiFi and battery power
       }
 
-      if (upload == "LORA" && useBattery && loraDataTransmitted)
+      if (upload == "LORA" && useBattery)
       {
          gotoSleep = true; // Enable sleep mode if using LoRa and battery power and data transmitted
+      }
+
+      if (useSDCard && useBattery)
+      {
+         gotoSleep = true; // Enable sleep mode if using SDCard and battery power and data transmitted
       }
    }
 
    if (currentMillis_long - previousMillis_long >= interval2) // turn tft off after 5 min
    {
-      backlight_pwm = 0;            // Turn off the backlight
-      tft.fillScreen(ST7735_BLACK); // Fill the TFT screen with black color
+      backlight_pwm = 0;             // Turn off the backlight
+      tft->fillScreen(ST7735_BLACK); // Fill the TFT screen with black color
       previousMillis_long = currentMillis_long;
-      tft.enableSleep(true); // Enable sleep mode for the TFT display
-   }
-
-   // check if its time to uplooad based on interval
-   if (currentMillis_upload - previousMillis_upload >= (upload_interval * mS_TO_MIN_FACTOR))
-   {
-      delay(100);
-      if (upload == "WIFI")
-         sendDataWifi = true; // Set flag to send data via WiFi
-      if (upload == "LORA")
-      {
-         if (loraJoined)
-         {
-            sendDataLoRa = true; // Set flag to send data via LoRa
-         }
-      }
-      if (upload == "NO_UPLOAD")
-         no_upload = true; // Set flag to indicate no upload
-
-      previousMillis_upload = currentMillis_upload;
+      displayRefresh = true;
+      tft->enableSleep(true); // Enable sleep mode for the TFT display
    }
 
    // Check button presses to navigate through pages
@@ -711,7 +813,7 @@ void loop()
    {
       currentPage = (currentPage + 1) % num_pages;
       backlight_pwm = 250;
-      tft.enableSleep(false); // Disable sleep mode for the TFT display
+      tft->enableSleep(false); // Disable sleep mode for the TFT display
       gotoSleep = false;
    }
 
@@ -719,7 +821,7 @@ void loop()
    {
       currentPage = (currentPage - 1 + num_pages) % num_pages;
       backlight_pwm = 250;
-      tft.enableSleep(false); // Disable sleep mode for the TFT display
+      tft->enableSleep(false); // Disable sleep mode for the TFT display
       upButtonsMillis = millis();
       gotoSleep = false;
    }
@@ -768,36 +870,61 @@ void loop()
    {
       os_runloop_once(); // Run the LoRaWAN OS run loop
 
-      if (!timeCriticalJobs && !(LMIC.opmode & OP_TXRXPEND)) // if no transmission is active
+      if (sendDataLoRa) // If ít`s time to send lora data
       {
-         if (sendDataLoRa) // If ít`s time to send lora data
-         {
-            sensorRead(); // Read sensor data
-            loraDataTransmitted = false;
-            sendDataLoRa = false;
-            gotoSleep = false;
+         sensorRead(); // Read sensor data
 
-            lora_sendData(); // Send data via LoRa
-         }
-         else
+         sendDataLoRa = false;
+         gotoSleep = false;
+
+         if (useSDCard)
          {
-            loraDataTransmitted = true;
+            if (!SD.begin(SPI_CON_CS, *spi))
+            {
+               Serial.println("Card Mount Failed");
+               return;
+            }
+            SD_sendData(); // Send data to SD Card
+
+            saveDataSDCard = false; // Reset the flag
          }
 
-         if ((useBattery && gotoSleep) || (!useDisplay))
+         lora_sendData(); // Send data via LoRa
+      }
+
+      if (loraJoinFailed && useDisplay)
+      {
+         analogWrite(TFT_BL, backlight_pwm); // turn TFT Backlight on
+         tft->fillScreen(background_color);
+
+         tft->setTextColor(0x9E6F);
+         tft->setFont(&FreeSans9pt7b);
+         tft->setTextSize(1);
+         tft->setCursor(5, 50);
+         tft->print("NO LORA GW near");
+      }
+
+      if (loraJoinFailed && useBattery)
+      {
+         Serial.println("NO Gateway found, restarting...");
+         ESP.restart();
+      }
+
+      const bool timeCriticalJobs = os_queryTimeCriticalJobs(ms2osticksRound((TX_INTERVAL * 1000)));
+
+      if (!timeCriticalJobs && !(LMIC.opmode & OP_TXRXPEND) && loraJoined) // if no transmission is active
+      {
+         if ((useBattery || !useDisplay) && gotoSleep)
          {
             Serial.print(F("Can go sleep "));
 
+            saveLORA_State();
             saveLMICToRTC(TX_INTERVAL);
+            delay(200);
 
-            // Stop LoRa before sleep
-            LMIC_shutdown();
-            esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ALL_LOW);
+            esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
             int time_interval = upload_interval * uS_TO_MIN_FACTOR;
             esp_sleep_enable_timer_wakeup(time_interval);
-            Serial.print("Setup ESP32 to sleep for ");
-            Serial.print(upload_interval);
-            Serial.println(" minutes");
 
             // Stop all events
             blinker.detach();
@@ -805,8 +932,12 @@ void loop()
             // Stop I2C
             Wire.end();
 
+            tft->fillScreen(ST7735_BLACK);
+            analogWrite(TFT_BL, 0); // turn TFT Backlight off
+            tft->enableSleep(true);
+            delay(100);
+
             // Stop SPI
-            tft.enableSleep(true);
             spi_bus_free(SPI2_HOST);
 
             // Reset Pins
@@ -826,6 +957,16 @@ void loop()
             gpio_hold_en((gpio_num_t)TFT_BL);
 
             gpio_deep_sleep_hold_en();
+
+            Serial.print("Setup ESP32 to sleep for ");
+            Serial.print(upload_interval);
+            Serial.println(" minutes");
+            Serial.print("wakeup in: ");
+            Serial.print(time_interval);
+            Serial.println(" MicroSeconds");
+
+            Serial.end();
+            Serial.flush();
 
             delay(100);
 
@@ -853,6 +994,98 @@ void loop()
             renderPage(currentPage); // Render the current page on the display
          }
       }
+      if (!saveDataSDCard)
+      {
+         if ((useBattery && gotoSleep) || (!useDisplay))
+         {
+            // Stop WiFi before sleep
+            wifiManager.disconnect();
+            WiFi.mode(WIFI_OFF);
+
+            esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
+            if (upload_interval == 60)
+            {
+               esp_sleep_enable_timer_wakeup((seconds_to_next_hour() - 15) * uS_TO_S_FACTOR);
+               Serial.println("Setup ESP32 to sleep for " + String(seconds_to_next_hour() / 60) + " Minutes");
+            }
+            else
+            {
+               int time_interval = upload_interval * uS_TO_MIN_FACTOR;
+               esp_sleep_enable_timer_wakeup(time_interval);
+               Serial.print("Setup ESP32 to sleep for ");
+               Serial.print(upload_interval);
+               Serial.println(" minutes");
+            }
+
+            // Stop all events
+            blinker.detach();
+
+            // Stop I2C
+            Wire.end();
+
+            tft->fillScreen(ST7735_BLACK);
+            analogWrite(TFT_BL, 0); // turn TFT Backlight off
+            tft->enableSleep(true);
+
+            // Stop SPI
+            spi_bus_free(SPI2_HOST);
+
+            // Reset Pins
+            gpio_reset_pin((gpio_num_t)SW_3V3);
+            gpio_reset_pin((gpio_num_t)SW_5V);
+            gpio_reset_pin((gpio_num_t)TFT_BL);
+
+            pinMode(SW_3V3, OUTPUT);
+            digitalWrite(SW_3V3, LOW);
+            pinMode(SW_5V, OUTPUT);
+            digitalWrite(SW_5V, LOW);
+            pinMode(TFT_BL, OUTPUT);
+            digitalWrite(TFT_BL, LOW);
+
+            gpio_hold_en((gpio_num_t)SW_3V3);
+            gpio_hold_en((gpio_num_t)SW_5V);
+            gpio_hold_en((gpio_num_t)TFT_BL);
+
+            gpio_deep_sleep_hold_en();
+
+            Serial.end();
+            Serial.flush();
+
+            delay(100);
+
+            esp_deep_sleep_start(); // Enter deep sleep mode
+         }
+      }
+   }
+
+   if (saveDataSDCard)
+   {
+      tft->drawRGBBitmap(145, 2, sdcard_icon, 14, 19);
+   }
+
+   if (useSDCard)
+   {
+      digitalWrite(SW_3V3, HIGH);
+      delay(200);
+
+      if (!SD.begin(SPI_CON_CS, *spi))
+      {
+         Serial.println("Card Mount Failed");
+         return;
+      }
+
+      sensorRead(); // Read sensor data
+      delay(1000);
+      SD_sendData(); // Send data to SD Card
+
+      useSDCard = false; // Reset the flag
+
+      setUploadTime(); // Set the next upload time
+
+      if ((!useBattery || !gotoSleep) && useDisplay)
+      {
+         renderPage(currentPage); // Render the current page on the display
+      }
 
       if ((useBattery && gotoSleep) || (!useDisplay))
       {
@@ -860,7 +1093,7 @@ void loop()
          wifiManager.disconnect();
          WiFi.mode(WIFI_OFF);
 
-         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ALL_LOW);
+         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
          if (upload_interval == 60)
          {
             esp_sleep_enable_timer_wakeup((seconds_to_next_hour() - 15) * uS_TO_S_FACTOR);
@@ -881,8 +1114,11 @@ void loop()
          // Stop I2C
          Wire.end();
 
+         tft->fillScreen(ST7735_BLACK);
+         analogWrite(TFT_BL, 0); // turn TFT Backlight off
+         tft->enableSleep(true);
+
          // Stop SPI
-         tft.enableSleep(true);
          spi_bus_free(SPI2_HOST);
 
          // Reset Pins
@@ -902,6 +1138,9 @@ void loop()
          gpio_hold_en((gpio_num_t)TFT_BL);
 
          gpio_deep_sleep_hold_en();
+
+         Serial.end();
+         Serial.flush();
 
          delay(100);
 
@@ -992,71 +1231,71 @@ void on_time_available(struct timeval *t)
 
 void digitalClockDisplay(int x, int y, bool date)
 {
-   tft.setTextSize(1);
-   tft.setCursor(x, y);
-   tft.setTextColor(ST7735_WHITE);
+   tft->setTextSize(1);
+   tft->setCursor(x, y);
+   tft->setTextColor(ST7735_WHITE);
 
-   tft.fillRect(x - 5, y - 2, 60, 10, ST7735_BLACK);
+   tft->fillRect(x - 5, y - 2, 60, 10, ST7735_BLACK);
 
-   tft.print(timeInfo.tm_hour);
+   tft->print(timeInfo.tm_hour);
    printDigits(timeInfo.tm_min);
    printDigits(timeInfo.tm_sec);
 
    if (date)
    {
-      tft.print("   ");
-      tft.print(timeInfo.tm_mday);
-      tft.print(" ");
-      tft.print(timeInfo.tm_mon + 1);
-      tft.print(" ");
-      tft.print(timeInfo.tm_year - 100 + 2000);
-      tft.println();
+      tft->print("   ");
+      tft->print(timeInfo.tm_mday);
+      tft->print(" ");
+      tft->print(timeInfo.tm_mon + 1);
+      tft->print(" ");
+      tft->print(timeInfo.tm_year - 100 + 2000);
+      tft->println();
    }
 }
 
 void drawBattery(int x, int y)
 {
    int bat = getBatteryChargeLevel();
-   tft.setCursor(x, y);
-   tft.setTextColor(0xCED7);
-   tft.print("Bat: ");
+   tft->setCursor(x, y);
+   tft->setTextColor(0xCED7);
+   tft->print("Bat: ");
    if (bat < 1)
    {
-      tft.setTextColor(ST7735_WHITE);
-      tft.print("NO");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print("NO");
       return;
    }
    if (bat > 1 && bat < 20)
    {
-      tft.setTextColor(ST7735_RED);
+      tft->setTextColor(ST7735_RED);
    }
    if (bat >= 20 && bat < 40)
    {
-      tft.setTextColor(ST7735_ORANGE);
+      tft->setTextColor(ST7735_ORANGE);
    }
    if (bat >= 40 && bat < 60)
    {
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setTextColor(ST7735_YELLOW);
    }
    if (bat >= 60 && bat < 80)
    {
-      tft.setTextColor(0xAEB2);
+      tft->setTextColor(0xAEB2);
    }
    if (bat >= 80)
    {
-      tft.setTextColor(ST7735_GREEN);
+      tft->setTextColor(ST7735_GREEN);
    }
-   tft.print(bat);
-   tft.print(" %");
+   tft->print(bat);
+   tft->print(" %");
 }
 
 void printDigits(int digits)
 {
    // utility for digital clock display: prints preceding colon and leading 0
-   tft.print(":");
+   tft->print(":");
    if (digits < 10)
-      tft.print('0');
-   tft.print(digits);
+      tft->print('0');
+   tft->print(digits);
 }
 
 void checkButton()
@@ -1102,7 +1341,7 @@ void GPIO_wake_up()
    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT1)
    {
       userWakeup = true;
-      loraFreshBoot = false;
+      freshBoot = false;
 
       if (useDisplay)
          gotoSleep = false;
@@ -1110,7 +1349,7 @@ void GPIO_wake_up()
 
    if (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER)
    {
-      loraFreshBoot = false;
+      freshBoot = false;
    }
 }
 
@@ -1396,77 +1635,119 @@ int countMeasurements(const std::vector<Sensor> &sensors)
 
 void mainPage()
 {
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextColor(0x9E6F);
-   tft.setFont(&FreeSans9pt7b);
-   tft.setTextSize(1);
-   tft.setCursor(5, 17);
-   tft.print("TeleAgriCulture");
-   tft.setCursor(5, 38);
-   tft.print("Board V2.1");
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextColor(0x9E6F);
+   tft->setFont(&FreeSans9pt7b);
+   tft->setTextSize(1);
+   tft->setCursor(5, 17);
+   tft->print("TeleAgriCulture");
+   tft->setCursor(5, 38);
+   tft->print("Board V2.1");
 
-   tft.setTextColor(ST7735_BLUE);
-   tft.setFont();
-   tft.setTextSize(1);
-   tft.setCursor(5, 45);
-   tft.print("Board ID: ");
-   tft.print(boardID);
-   tft.setCursor(5, 55);
-   tft.print(version);
-   tft.setTextColor(0xCED7);
-   tft.setCursor(5, 65);
-   tft.print("WiFi: ");
-   tft.setTextColor(ST7735_WHITE);
-   tft.print(WiFi.SSID());
-   tft.setCursor(5, 75);
-   tft.setTextColor(0xCED7);
-   tft.print("IP: ");
-   tft.setTextColor(ST7735_WHITE);
-   tft.print(WiFi.localIP());
-   tft.setCursor(5, 85);
-   tft.setTextColor(0xCED7);
-   tft.print("MAC: ");
-   tft.setTextColor(ST7735_WHITE);
-   tft.print(WiFi.macAddress());
+   tft->setTextColor(ST7735_BLUE);
+   tft->setFont();
+   tft->setTextSize(1);
+   tft->setCursor(5, 45);
+   tft->print("Board ID: ");
+   tft->print(boardID);
+   tft->setCursor(5, 55);
+   tft->print(version);
 
    if (upload == "WIFI")
    {
       digitalClockDisplay(5, 95, true);
 
-      tft.setCursor(5, 105);
-      tft.print("last data UPLOAD: ");
-      tft.setTextColor(ST7735_ORANGE);
-      tft.print(upload);
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 65);
+      tft->print("WiFi: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.SSID());
+      tft->setCursor(5, 75);
+      tft->setTextColor(0xCED7);
+      tft->print("IP: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.localIP());
+      tft->setCursor(5, 85);
+      tft->print("MAC: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.macAddress());
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 105);
+      tft->print("last data UPLOAD: ");
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print(upload);
 
-      tft.setTextColor(ST7735_ORANGE);
-      tft.setCursor(5, 115);
-      tft.print(lastUpload);
+      tft->setTextColor(ST7735_ORANGE);
+      tft->setCursor(5, 115);
+      tft->print(lastUpload);
    }
-   else
+   else if (upload == "NO")
    {
-      tft.setTextColor(ST7735_ORANGE);
-      tft.setCursor(5, 95);
-      tft.print("TTN no time sync");
-      tft.setTextColor(ST7735_RED);
-      tft.setCursor(5, 105);
-      tft.print(lora_fqz);
-      tft.print("  ");
-      tft.setTextColor(ST7735_ORANGE);
-      tft.print(upload);
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 65);
+      tft->print("WiFi: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPSSID());
+      tft->setCursor(5, 75);
+      tft->setTextColor(0xCED7);
+      tft->print("IP: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPIP());
+      tft->setCursor(5, 85);
+      tft->print("MAC: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPmacAddress());
+      tft->setCursor(5, 95);
+      tft->print("no time sync");
+      tft->setTextColor(ST7735_RED);
+      tft->setCursor(5, 105);
+      tft->print("up load:");
+      tft->print("  ");
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print(upload);
+      tft->setTextColor(ST7735_ORANGE);
+      tft->setCursor(5, 115);
+      tft->print(lastUpload);
+   }
+   else if (upload == "LORA")
+   {
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 65);
+      tft->print("WiFi: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPSSID());
+      tft->setCursor(5, 75);
+      tft->setTextColor(0xCED7);
+      tft->print("IP: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPIP());
+      tft->setCursor(5, 85);
+      tft->print("MAC: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.softAPmacAddress());
+      tft->setTextColor(ST7735_ORANGE);
+      tft->setCursor(5, 95);
+      tft->print("TTN no time sync");
+      tft->setTextColor(ST7735_RED);
+      tft->setCursor(5, 105);
+      tft->print(lora_fqz);
+      tft->print("  ");
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print(upload);
 
       if (loraJoinFailed)
       {
-         tft.setTextColor(ST7735_RED);
-         tft.setCursor(5, 115);
-         tft.print("JOIN FAILED");
+         tft->setTextColor(ST7735_RED);
+         tft->setCursor(5, 115);
+         tft->print("JOIN FAILED");
       }
       else
       {
          if (loraJoined)
          {
-            tft.setTextColor(ST7735_GREEN);
-            tft.setCursor(5, 115);
-            tft.print("GW joined");
+            tft->setTextColor(ST7735_GREEN);
+            tft->setCursor(5, 115);
+            tft->print("GW joined");
          }
       }
    }
@@ -1713,133 +1994,133 @@ void printSensors()
 
 void I2C_ConnectorPage()
 {
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextSize(2);
-   tft.setCursor(10, 10);
-   tft.setTextColor(ST7735_WHITE);
-   tft.print("I2C Con");
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextSize(2);
+   tft->setCursor(10, 10);
+   tft->setTextColor(ST7735_WHITE);
+   tft->print("I2C Con");
 
-   tft.setTextSize(1);
+   tft->setTextSize(1);
    int cursor_y = 35;
 
    for (int i = 0; i < I2C_NUM; i++)
    {
-      tft.setCursor(5, cursor_y);
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setCursor(5, cursor_y);
+      tft->setTextColor(ST7735_YELLOW);
 
-      tft.print("I2C_");
-      tft.print(i + 1);
-      tft.setCursor(80, cursor_y);
+      tft->print("I2C_");
+      tft->print(i + 1);
+      tft->setCursor(80, cursor_y);
       if (I2C_con_table[i] == -1)
       {
-         tft.setTextColor(ST7735_RED);
-         tft.print("NO");
+         tft->setTextColor(ST7735_RED);
+         tft->print("NO");
       }
       else
       {
-         tft.setTextColor(ST7735_GREEN);
-         tft.print(allSensors[I2C_con_table[i]].sensor_name);
+         tft->setTextColor(ST7735_GREEN);
+         tft->print(allSensors[I2C_con_table[i]].sensor_name);
       }
       cursor_y += 10;
    }
    cursor_y += 10;
-   tft.setTextSize(2);
-   tft.setCursor(10, cursor_y);
-   tft.setTextColor(ST7735_WHITE);
-   tft.print("I2C_5V Con");
+   tft->setTextSize(2);
+   tft->setCursor(10, cursor_y);
+   tft->setTextColor(ST7735_WHITE);
+   tft->print("I2C_5V Con");
 
    cursor_y += 25;
 
-   tft.setTextSize(1);
-   tft.setCursor(5, cursor_y);
-   tft.setTextColor(ST7735_YELLOW);
+   tft->setTextSize(1);
+   tft->setCursor(5, cursor_y);
+   tft->setTextColor(ST7735_YELLOW);
 
-   tft.print("I2C_5V");
+   tft->print("I2C_5V");
 
-   tft.setCursor(80, cursor_y);
+   tft->setCursor(80, cursor_y);
    if (I2C_5V_con_table[0] == -1)
    {
-      tft.setTextColor(ST7735_RED);
-      tft.print("NO");
+      tft->setTextColor(ST7735_RED);
+      tft->print("NO");
    }
    else
    {
-      tft.setTextColor(ST7735_GREEN);
-      tft.print(allSensors[I2C_5V_con_table[0]].sensor_name);
+      tft->setTextColor(ST7735_GREEN);
+      tft->print(allSensors[I2C_5V_con_table[0]].sensor_name);
    }
 }
 
 void ADC_ConnectorPage()
 {
-   tft.fillScreen(ST7735_BLACK);
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextSize(2);
-   tft.setCursor(10, 10);
-   tft.setTextColor(ST7735_WHITE);
-   tft.print("ADC Con");
+   tft->fillScreen(ST7735_BLACK);
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextSize(2);
+   tft->setCursor(10, 10);
+   tft->setTextColor(ST7735_WHITE);
+   tft->print("ADC Con");
 
-   tft.setTextSize(1);
+   tft->setTextSize(1);
    int cursor_y = 45;
 
    for (int i = 0; i < ADC_NUM; i++)
    {
-      tft.setCursor(5, cursor_y);
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setCursor(5, cursor_y);
+      tft->setTextColor(ST7735_YELLOW);
 
-      tft.print("ADC_");
-      tft.print(i + 1);
-      tft.setCursor(80, cursor_y);
+      tft->print("ADC_");
+      tft->print(i + 1);
+      tft->setCursor(80, cursor_y);
       if (ADC_con_table[i] == -1)
       {
-         tft.setTextColor(ST7735_RED);
-         tft.print("NO");
+         tft->setTextColor(ST7735_RED);
+         tft->print("NO");
       }
       else
       {
-         tft.setTextColor(ST7735_GREEN);
-         tft.print(allSensors[ADC_con_table[i]].sensor_name);
+         tft->setTextColor(ST7735_GREEN);
+         tft->print(allSensors[ADC_con_table[i]].sensor_name);
       }
       cursor_y += 10;
    }
    cursor_y += 10;
 
-   tft.setCursor(5, cursor_y);
-   tft.setTextColor(ST7735_YELLOW);
-   tft.print("BootCount: ");
-   tft.setTextColor(ST7735_GREEN);
-   tft.print(bootCount);
+   tft->setCursor(5, cursor_y);
+   tft->setTextColor(ST7735_YELLOW);
+   tft->print("BootCount: ");
+   tft->setTextColor(ST7735_GREEN);
+   tft->print(bootCount);
 }
 
 void OneWire_ConnectorPage()
 {
-   tft.fillScreen(ST7735_BLACK);
+   tft->fillScreen(ST7735_BLACK);
 
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextSize(2);
-   tft.setCursor(10, 10);
-   tft.setTextColor(ST7735_WHITE);
-   tft.print("OneWire Con");
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextSize(2);
+   tft->setCursor(10, 10);
+   tft->setTextColor(ST7735_WHITE);
+   tft->print("OneWire Con");
 
-   tft.setTextSize(1);
+   tft->setTextSize(1);
    int cursor_y = 45;
 
    for (int i = 0; i < ONEWIRE_NUM; i++)
    {
-      tft.setCursor(5, cursor_y);
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setCursor(5, cursor_y);
+      tft->setTextColor(ST7735_YELLOW);
 
-      tft.print("1-Wire_");
-      tft.print(i + 1);
-      tft.setCursor(80, cursor_y);
+      tft->print("1-Wire_");
+      tft->print(i + 1);
+      tft->setCursor(80, cursor_y);
       if (OneWire_con_table[i] == -1)
       {
-         tft.setTextColor(ST7735_RED);
-         tft.print("NO");
+         tft->setTextColor(ST7735_RED);
+         tft->print("NO");
       }
       else
       {
-         tft.setTextColor(ST7735_GREEN);
-         tft.print(allSensors[OneWire_con_table[i]].sensor_name);
+         tft->setTextColor(ST7735_GREEN);
+         tft->print(allSensors[OneWire_con_table[i]].sensor_name);
       }
       cursor_y += 10;
    }
@@ -1847,13 +2128,13 @@ void OneWire_ConnectorPage()
 
 void measurementsPage(int page)
 {
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextSize(2);
-   tft.setCursor(10, 10);
-   tft.setTextColor(ST7735_WHITE);
-   tft.print("Sensor Data");
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextSize(2);
+   tft->setCursor(10, 10);
+   tft->setTextColor(ST7735_WHITE);
+   tft->print("Sensor Data");
 
-   tft.setTextSize(1);
+   tft->setTextSize(1);
 
    int cursor_y = 35;
 
@@ -1866,34 +2147,34 @@ void measurementsPage(int page)
 
    for (int i = startIndex; i < endIndex; i++)
    {
-      tft.setCursor(5, cursor_y);
-      tft.setTextColor(ST7735_BLUE);
-      tft.print(show_measurements[i].data_name);
-      tft.print(": ");
+      tft->setCursor(5, cursor_y);
+      tft->setTextColor(ST7735_BLUE);
+      tft->print(show_measurements[i].data_name);
+      tft->print(": ");
 
-      tft.setCursor(60, cursor_y);
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setCursor(65, cursor_y);
+      tft->setTextColor(ST7735_YELLOW);
 
       if (!isnan(show_measurements[i].value))
       {
-         tft.print(show_measurements[i].value);
+         tft->print(show_measurements[i].value);
       }
       else
       {
-         tft.print("NAN");
+         tft->print("NAN");
       }
 
-      tft.print(" ");
+      tft->print(" ");
 
       if (!(show_measurements[i].unit == "°C"))
       {
-         tft.print(show_measurements[i].unit);
+         tft->print(show_measurements[i].unit);
       }
       else
       {
-         tft.drawChar(tft.getCursorX(), tft.getCursorY(), 0xF8, ST7735_YELLOW, ST7735_BLACK, 1);
-         tft.setCursor(tft.getCursorX() + 7, tft.getCursorY());
-         tft.print("C");
+         tft->drawChar(tft->getCursorX(), tft->getCursorY(), 0xF8, ST7735_YELLOW, ST7735_BLACK, 1);
+         tft->setCursor(tft->getCursorX() + 7, tft->getCursorY());
+         tft->print("C");
       }
       cursor_y += 10;
    }
@@ -1901,9 +2182,9 @@ void measurementsPage(int page)
 
 void checkLoadedStuff(void)
 {
-   Serial.println();
-   Serial.println("---------------Prototype Sensors loaded -----------");
-   printProtoSensors();
+   // Serial.println();
+   // Serial.println("---------------Prototype Sensors loaded -----------");
+   // printProtoSensors();
    Serial.println();
    Serial.println("---------------Connector table loaded -----------");
 
@@ -1917,38 +2198,24 @@ void checkLoadedStuff(void)
    Serial.println();
    Serial.println("---------------Config loaded -----------");
 
-   Serial.print("\nBoard ID: ");
-   Serial.println(boardID);
-   Serial.print("Battery powered: ");
-   Serial.println(useBattery);
-   Serial.print("Display: ");
-   Serial.println(useDisplay);
-   Serial.print("use Enterprise WPA: ");
-   Serial.println(useEnterpriseWPA);
-   Serial.print("use Custom NTP: ");
-   Serial.println(useCustomNTP);
-   Serial.print("use NTP: ");
-   Serial.println(useNTP);
-   Serial.print("API Key: ");
-   Serial.println(API_KEY);
-   Serial.print("Timezone: ");
-   Serial.println(timeZone);
-   Serial.print("Upload: ");
-   Serial.println(upload);
-   Serial.print("Anonym ID: ");
-   Serial.println(anonym);
-   Serial.print("\nUser CA: ");
-   Serial.println(user_CA);
-   Serial.print("Custom NTP Address: ");
-   Serial.println(customNTPaddress);
-   Serial.print("Lora Frequency: ");
-   Serial.println(lora_fqz);
-   Serial.print("OTAA DEVEUI: ");
-   Serial.println(OTAA_DEVEUI);
-   Serial.print("OTAA APPEUI: ");
-   Serial.println(OTAA_APPEUI);
-   Serial.print("OTAA APPKEY: ");
-   Serial.println(OTAA_APPKEY);
+   Serial.println("Configuration Values:");
+   Serial.printf("BoardID: %d\n", boardID);
+   Serial.printf("useBattery: %d\n", useBattery);
+   Serial.printf("useDisplay: %d\n", useDisplay);
+   Serial.printf("useEnterpriseWPA: %d\n", useEnterpriseWPA);
+   Serial.printf("useCustomNTP: %d\n", useCustomNTP);
+   Serial.printf("useNTP: %d\n", useNTP);
+   Serial.printf("API_KEY: %s\n", API_KEY.c_str());
+   Serial.printf("upload: %s\n", upload.c_str());
+   Serial.printf("upload_interval: %d\n", upload_interval);
+   Serial.printf("anonym: %s\n", anonym.c_str());
+   Serial.printf("user_CA: %s\n", user_CA.c_str());
+   Serial.printf("customNTPaddress: %s\n", customNTPaddress.c_str());
+   Serial.printf("timeZone: %s\n", timeZone.c_str());
+   Serial.printf("OTAA_DEVEUI: %s\n", OTAA_DEVEUI.c_str());
+   Serial.printf("OTAA_APPEUI: %s\n", OTAA_APPEUI.c_str());
+   Serial.printf("OTAA_APPKEY: %s\n", OTAA_APPKEY.c_str());
+   Serial.printf("lora_ADR: %d\n", lora_ADR);
 
    Serial.println("\n---------------DEBUGG END -----------");
 
@@ -1957,11 +2224,12 @@ void checkLoadedStuff(void)
 
 void save_Config(void)
 {
-   StaticJsonDocument<2500> doc;
+   StaticJsonDocument<3000> doc;
 
    doc["BoardID"] = boardID;
    doc["useBattery"] = useBattery;
    doc["useDisplay"] = useDisplay;
+   doc["saveDataSDCard"] = saveDataSDCard;
    doc["useEnterpriseWPA"] = useEnterpriseWPA;
    doc["useCustomNTP"] = useCustomNTP;
    doc["useNTP"] = useNTP;
@@ -1975,6 +2243,10 @@ void save_Config(void)
    doc["OTAA_DEVEUI"] = OTAA_DEVEUI;
    doc["OTAA_APPEUI"] = OTAA_APPEUI;
    doc["OTAA_APPKEY"] = OTAA_APPKEY;
+   doc["lora_ADR"] = lora_ADR;
+   doc["apn"] = apn;
+   doc["gprs_user"] = gprs_user;
+   doc["gprs_pass"] = gprs_pass;
 
    File configFile = SPIFFS.open("/board_config.json", "w");
    if (!configFile)
@@ -2014,6 +2286,7 @@ void load_Config(void)
                boardID = doc["BoardID"];
                useBattery = doc["useBattery"];
                useDisplay = doc["useDisplay"];
+               saveDataSDCard = doc["saveDataSDCard"];
                useEnterpriseWPA = doc["useEnzerpriseWPA"];
                useCustomNTP = doc["useCustomNTP"];
                useNTP = doc["useNTP"];
@@ -2027,6 +2300,10 @@ void load_Config(void)
                OTAA_DEVEUI = doc["OTAA_DEVEUI"].as<String>();
                OTAA_APPEUI = doc["OTAA_APPEUI"].as<String>();
                OTAA_APPKEY = doc["OTAA_APPKEY"].as<String>();
+               lora_ADR = doc["lora_ADR"];
+               apn = doc["apn"].as<String>();
+               gprs_user = doc["gprs_user"].as<String>();
+               gprs_pass = doc["gprs_pass"].as<String>();
             }
          }
          else
@@ -2383,6 +2660,24 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
+
+            case DEPTH:
+               message.addRawFloat(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               break;
+
+            case UV_I:
+               message.addTemperature(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               break;
             }
          }
       }
@@ -2392,6 +2687,57 @@ void lora_sendData(void)
    {
       Serial.println("\nSend Lora Data: ");
       do_send(message);
+   }
+}
+
+void SD_sendData()
+{
+   DynamicJsonDocument docMeasures(2000);
+
+   for (int i = 0; i < sensorVector.size(); ++i)
+   {
+      for (int j = 0; j < sensorVector[i].returnCount; j++)
+      {
+         if (!isnan(sensorVector[i].measurements[j].value))
+         {
+            docMeasures[sensorVector[i].measurements[j].data_name] = static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0);
+         }
+      }
+   }
+
+   String output;
+   serializeJson(docMeasures, output);
+
+   // Ensure the output is not empty
+   if (output.length() > 2) // The minimum valid JSON object would be "{}" which is 2 characters
+   {
+      String path = "/Teleagriculture_SensorKit_id_" + String(boardID); // File path
+      File dataFile;
+
+      // Check if the file exists
+      if (SD.exists(path.c_str()))
+      {
+         dataFile = SD.open(path.c_str(), FILE_APPEND); // Open in append mode
+      }
+      else
+      {
+         dataFile = SD.open(path.c_str(), FILE_WRITE); // Create a new file
+      }
+
+      if (dataFile)
+      {
+         dataFile.println(output); // Append the JSON data as a new line
+         dataFile.close();
+         Serial.println("Data written to SD card: " + output);
+      }
+      else
+      {
+         Serial.println("Failed to open file for writing");
+      }
+   }
+   else
+   {
+      Serial.println("No valid data to write");
    }
 }
 
@@ -2456,35 +2802,35 @@ void configModeCallback(WiFiManager *myWiFiManager)
    // Serial.println(WiFi.softAPIP());
    if (useDisplay)
    {
-      tft.fillScreen(ST7735_BLACK);
-      tft.setTextColor(ST7735_WHITE);
-      tft.setFont(&FreeSans9pt7b);
-      tft.setTextSize(1);
-      tft.setCursor(5, 17);
-      tft.print("TeleAgriCulture");
-      tft.setCursor(5, 38);
-      tft.print("Board V2.1");
+      tft->fillScreen(ST7735_BLACK);
+      tft->setTextColor(ST7735_WHITE);
+      tft->setFont(&FreeSans9pt7b);
+      tft->setTextSize(1);
+      tft->setCursor(5, 17);
+      tft->print("TeleAgriCulture");
+      tft->setCursor(5, 38);
+      tft->print("Board V2.1");
 
-      tft.setTextColor(ST7735_RED);
-      tft.setFont();
-      tft.setTextSize(2);
-      tft.setCursor(5, 50);
-      tft.print("Config MODE");
-      tft.setTextColor(ST7735_WHITE);
-      tft.setTextSize(1);
-      tft.setCursor(5, 73);
-      tft.print("SSID:");
-      tft.setCursor(5, 85);
-      tft.print(myWiFiManager->getConfigPortalSSID());
-      tft.setCursor(5, 95);
-      tft.print("IP: ");
-      tft.print(WiFi.softAPIP());
-      tft.setCursor(5, 108);
-      tft.print("MAC: ");
-      tft.print(WiFi.macAddress());
-      tft.setCursor(5, 117);
-      tft.setTextColor(ST7735_BLUE);
-      tft.print(version);
+      tft->setTextColor(ST7735_RED);
+      tft->setFont();
+      tft->setTextSize(2);
+      tft->setCursor(5, 50);
+      tft->print("Config MODE");
+      tft->setTextColor(ST7735_WHITE);
+      tft->setTextSize(1);
+      tft->setCursor(5, 73);
+      tft->print("SSID:");
+      tft->setCursor(5, 85);
+      tft->print(myWiFiManager->getConfigPortalSSID());
+      tft->setCursor(5, 95);
+      tft->print("IP: ");
+      tft->print(WiFi.softAPIP());
+      tft->setCursor(5, 108);
+      tft->print("MAC: ");
+      tft->print(WiFi.macAddress());
+      tft->setCursor(5, 117);
+      tft->setTextColor(ST7735_BLUE);
+      tft->print(version);
    }
 }
 
@@ -2667,7 +3013,7 @@ void setUPWiFi()
    // attach board-setup page to the WiFi Manager
    WiFiManagerNS::init(&wifiManager);
 
-   wifiManager.setDebugOutput(false);
+   wifiManager.setDebugOutput(true);
    wifiManager.setHostname(hostname.c_str());
    wifiManager.setTitle("Board Config");
    wifiManager.setCustomHeadElement(custom_Title_Html.c_str());
@@ -2885,52 +3231,52 @@ int getBatteryChargeLevel()
 void deepsleepPage()
 {
    analogWrite(TFT_BL, 10); // turn TFT Backlight on
-   tft.fillScreen(ST7735_BLACK);
-   tft.setTextSize(1);
-   tft.setTextColor(ST7735_WHITE);
+   tft->fillScreen(ST7735_BLACK);
+   tft->setTextSize(1);
+   tft->setTextColor(ST7735_WHITE);
 
    int cursor_y = 10;
 
    for (int i = 0; i < show_measurements.size(); i++)
    {
-      tft.setCursor(5, cursor_y);
-      tft.setTextColor(ST7735_BLUE);
-      tft.print(show_measurements[i].data_name);
-      tft.print(": ");
+      tft->setCursor(5, cursor_y);
+      tft->setTextColor(ST7735_BLUE);
+      tft->print(show_measurements[i].data_name);
+      tft->print(": ");
 
-      tft.setCursor(60, cursor_y);
-      tft.setTextColor(ST7735_YELLOW);
+      tft->setCursor(60, cursor_y);
+      tft->setTextColor(ST7735_YELLOW);
 
       if (!isnan(show_measurements[i].value))
       {
-         tft.print(show_measurements[i].value);
+         tft->print(show_measurements[i].value);
       }
       else
       {
-         tft.print("NAN");
+         tft->print("NAN");
       }
 
-      tft.print(" ");
+      tft->print(" ");
 
       if (!(show_measurements[i].unit == "°C"))
       {
-         tft.print(show_measurements[i].unit);
+         tft->print(show_measurements[i].unit);
       }
       else
       {
-         tft.drawChar(tft.getCursorX(), tft.getCursorY(), 0xF8, ST7735_YELLOW, ST7735_BLACK, 1);
-         tft.setCursor(tft.getCursorX() + 7, tft.getCursorY());
-         tft.print("C");
+         tft->drawChar(tft->getCursorX(), tft->getCursorY(), 0xF8, ST7735_YELLOW, ST7735_BLACK, 1);
+         tft->setCursor(tft->getCursorX() + 7, tft->getCursorY());
+         tft->print("C");
       }
       cursor_y += 10;
    }
    cursor_y += 10;
-   tft.setCursor(5, cursor_y);
-   tft.setTextColor(ST7735_ORANGE);
+   tft->setCursor(5, cursor_y);
+   tft->setTextColor(ST7735_ORANGE);
 
-   tft.print("Deep Sleep for: ");
-   tft.print(seconds_to_next_hour());
-   // tft.print(TIME_TO_SLEEP);
+   tft->print("Deep Sleep for: ");
+   tft->print(seconds_to_next_hour());
+   // tft->print(TIME_TO_SLEEP);
 }
 
 ValueOrder getValueOrderFromString(String str)
@@ -3039,6 +3385,14 @@ ValueOrder getValueOrderFromString(String str)
    {
       return DBA;
    }
+   else if (str == "DEPTH")
+   {
+      return DEPTH;
+   }
+   else if (str == "UV_I")
+   {
+      return UV_I;
+   }
    else
    {
       return NOT;
@@ -3093,6 +3447,7 @@ void onEvent(ev_t ev)
       Serial.println("\n");
 
       loraJoined = true;
+      loraJoinFailed = false;
       displayRefresh = true;
 
       saveLORA_State();
@@ -3100,7 +3455,15 @@ void onEvent(ev_t ev)
       // Disable link check validation (automatically enabled
       // during join, but because slow data rates change max TX
       // size, we don't use it in this example.
-      LMIC_setLinkCheckMode(0);
+      if (lora_ADR)
+      {
+         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
+         LMIC_setLinkCheckMode(0);
+      }
+      else
+      {
+         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
+      }
    }
    break;
    /*
@@ -3114,6 +3477,9 @@ void onEvent(ev_t ev)
    case EV_JOIN_FAILED:
       Serial.println(F("EV_JOIN_FAILED"));
       loraJoinFailed = true;
+      // upload="WIFI"; // Fallback WIFI
+      // save_Config();
+      ESP.restart();
       break;
    case EV_REJOIN_FAILED:
       Serial.println(F("EV_REJOIN_FAILED"));
@@ -3510,7 +3876,7 @@ void saveLORA_State(void)
 // Function to reload LMIC configuration from RTC Memory
 void loadLORA_State()
 {
-   Serial.println(F("Load LMIC from RTC ..."));
+   Serial.println(F("Load LMIC State from RTC ..."));
 
    LMIC_setSession(RTC_LORAWAN_netid, RTC_LORAWAN_devaddr, RTC_LORAWAN_nwkKey, RTC_LORAWAN_artKey);
    LMIC_setSeqnoUp(RTC_LORAWAN_seqnoUp);
@@ -3530,5 +3896,27 @@ void loadLORA_State()
    memcpy(LMIC.channelDrMap, RTC_LORAWAN_channelDrMap, MAX_CHANNELS * sizeof(u2_t));
    LMIC.channelMap = RTC_LORAWAN_channelMap;
 #endif
+   delay(200);
    Serial.println("LMIC configuration reloaded from RTC Memory.");
+}
+
+void openConfig()
+{
+   startBlinking(); // Start blinking an LED to indicate configuration mode
+
+   setUPWiFi(); // Set up WiFi connection
+
+   backlight_pwm = 200;
+   analogWrite(TFT_BL, backlight_pwm); // Turn off TFT Backlight
+
+   wifiManager.setTimeout(900000); // set timeout for ConfigPortal to 15min (9000000ms)
+
+   if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
+   {
+      Serial.println("failed to connect and hit timeout");
+      delay(3000);
+      ESP.restart(); // Failed to connect, restart ESP32
+   }
+   ESP.restart();
+   stopBlinking(); // Stop blinking the LED
 }

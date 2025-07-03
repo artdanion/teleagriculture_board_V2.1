@@ -1,14 +1,14 @@
 /*            web server args
 upload: WIFI
-BoardID: 1003
-API_KEY: 8i8nRED12XgHb3vBjIXCf0rXMedI8NTB
+BoardID: 100X
+API_KEY: XXXXXxxxxXXXXxXXXXXXXXXXX
 use-WPA_enterprise: 1
 ANONYMUS: anonymus@example.com
 certificate:
 lora_fqz: EU
-OTAA_DEVEUI: 70B3D57ED005A8F4
-OTAA_APPEUI: 70B3D57ED005A8F4
-OTAA_APPKEY: DF6B2A4AC0930BCA55141564D751D578
+OTAA_DEVEUI: 0000000000000000
+OTAA_APPEUI: 0000000000000000
+OTAA_APPKEY: 0000000000000000000000000000000
 i2c_1: -1
 i2c_3: -1
 i2c_2: -1
@@ -174,7 +174,6 @@ namespace WiFiManagerNS
     TimeConfHTML += getTemplate(HTML_HEAD_START);
     TimeConfHTML.replace(FPSTR(T_v), "TeleAgriCulture Board Setup");
     TimeConfHTML += custom_Title_Html;
-    // TimeConfHTML += getTemplate(HTML_SCRIPT);
 
     TimeConfHTML += "<script>";
     TimeConfHTML += "window.addEventListener('load', function() { var now = new Date(); var offset = now.getTimezoneOffset() * 60000; var adjustedDate = new Date(now.getTime() - offset);";
@@ -182,10 +181,11 @@ namespace WiFiManagerNS
     TimeConfHTML += "</script>";
 
     TimeConfHTML += "<script>";
-    TimeConfHTML += "function chooseUploade() { var checked = document.querySelector('input[name=upload]:checked'); var div = document.getElementById('Lora');";
-    TimeConfHTML += "if (checked && checked.value == 'LORA') { div.style.display = 'block'; var checkbox = document.getElementById('use-WPA_enterprise'); checkbox.checked = false;";
-    TimeConfHTML += "var div = document.getElementById('use_NTP'); div.style.display = 'none'; var div = document.getElementById('no_NTP'); div.style.display = 'block'; }";
-    TimeConfHTML += "else { div.style.display = 'none'; var div = document.getElementById('use_NTP'); div.style.display = 'block'; var div = document.getElementById('no_NTP'); div.style.display = 'none'; } }";
+    TimeConfHTML += "function chooseUploade() { var checked = document.querySelector('input[name=upload]:checked'); var div = document.getElementById('Lora'); var divNTP = document.getElementById('use_NTP'); var divNoNTP = document.getElementById('no_NTP'); var divGSM = document.getElementById('GSM');";
+    TimeConfHTML += "if (checked && checked.value == 'LORA') { div.style.display = 'block'; var checkbox = document.getElementById('use-WPA_enterprise'); checkbox.checked = false; divNTP.style.display = 'none'; divNoNTP.style.display = 'block'; divGSM.style.display = 'none'; }";
+    TimeConfHTML += "else if (checked && checked.value == 'NO') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; }";
+    TimeConfHTML += "else if (checked && checked.value == 'GSM') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'block'; }";
+    TimeConfHTML += "else { div.style.display = 'none'; divNTP.style.display = 'block'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; } }";
     TimeConfHTML += "</script>";
 
     TimeConfHTML += "<script type='text/javascript'>";
@@ -206,13 +206,8 @@ namespace WiFiManagerNS
 
     TimeConfHTML += getTemplate(HTML_STYLE);
 
-    // CERT form
-    // TimeConfHTML += "<style>input[type='checkbox'][name='use-WPA_enterprise']:not(:checked)~.enterprise { display: none; }";
-    // TimeConfHTML += "input[type='checkbox'][name='use-WPA_enterprise']:checked~.enterprise {display: block;}</style>";
-
     TimeConfHTML += getTemplate(HTML_HEAD_END);
     TimeConfHTML.replace(FPSTR(T_c), "invert"); // add class str
-    //------------- HTML Body start ------- //
 
     TimeConfHTML += "<h2>Board Setup</h2>";
     TimeConfHTML += version;
@@ -225,6 +220,8 @@ namespace WiFiManagerNS
     TimeConfHTML += "<table style='width:100%'><tr>";
     TimeConfHTML += "<td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()' checked /><label for='upload1'> WiFi</label></td>";
     TimeConfHTML += "<td><input type='radio' id='loracheck' name='upload' value='LORA' onchange='chooseUploade()' /><label for='upload2'> LoRa</label></td>";
+    TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' /><label for='upload3'> NO upload</label></td>";
+    //TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
     TimeConfHTML += "</tr></table><br>";
 
     if (useBattery)
@@ -238,11 +235,20 @@ namespace WiFiManagerNS
 
     if (useDisplay)
     {
-      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1' checked /><label for='display'> show display</label>";
+      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1' checked /><label for='display'> show display</label><br>";
     }
     else
     {
-      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1'/><label for='display'> show display</label>";
+      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1'/><label for='display'> show display</label><br>";
+    }
+
+    if (saveDataSDCard)
+    {
+      TimeConfHTML += "<input type='checkbox' id='logtosd' name='logtosd' value='1' checked /><label for='logtosd'> Log to SD Card</label><br>";
+    }
+    else
+    {
+      TimeConfHTML += "<input type='checkbox' id='logtosd' name='logtosd' value='1'/><label for='logtosd'> Log to SD Card</label><br>";
     }
 
     TimeConfHTML += "<BR><BR><label for='up_interval'>Upload Interval:</label>";
@@ -259,10 +265,6 @@ namespace WiFiManagerNS
     TimeConfHTML += "<div><label for='BoardID'>Board ID:</label><input type='text' id='BoardID' name='BoardID' pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=" + String(boardID) + " required>";
     TimeConfHTML += "<label for='API_KEY'>API KEY:</label><input type='text' name='API_KEY' pattern='^[A-Za-z0-9]{32}$' title=' Enter Bearer token' value=" + API_KEY + " required>";
 
-    // CERT form
-    // TimeConfHTML += "<br><br><label for='use-WPA_enterprise'>Enable WPA enterprise / Eduroam </label><input value='1' type='checkbox' name='use-WPA_enterprise' id='use-WPA_enterprise'><br>";
-    // TimeConfHTML += "<div class='enterprise'><label for='ANONYMUS'>Anonymus ID</label><input type='email' name='ANONYMUS' title='Enter anonym id' value=" + anonym + " required>";
-    // TimeConfHTML += "<br><br><label for='certificate'>Please paste your CA server certificate here:</label><textarea id='certificate' name='certificate' rows='23' cols='63' placeholder='-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----'></textarea></div></div>";
     TimeConfHTML += "<div id='Lora' style='display:none'><br><BR><b>LoRa TTN Data</b>";
 
     TimeConfHTML += "<BR><strong>" + lora_fqz + "</strong><BR><BR>";
@@ -270,6 +272,13 @@ namespace WiFiManagerNS
     TimeConfHTML += "<label for='OTAA_APPEUI'>OTAA_APPEUI:</label><input type='text' id='OTAA_APPEUI' name='OTAA_APPEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_APPEUI + " required>";
     TimeConfHTML += "<label for='OTAA_DEVEUI'>OTAA_DEVEUI:</label><input type='text' id='OTAA_DEVEUI' name='OTAA_DEVEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_DEVEUI + " required>";
     TimeConfHTML += "<label for='OTAA_APPKEY'>OTAA_APPKEY:</label><input type='text' id='OTAA_APPKEY' name='OTAA_APPKEY' pattern='^[0-9A-F]{32}$' title='Enter 16 hexadecimal digits without any prefix or separator' value=" + OTAA_APPKEY + " required>";
+    TimeConfHTML += "<BR><input type='checkbox' id='ADR' name='ADR' value='1'/><label for='ADR'> use ADR</label>";
+    TimeConfHTML += "</div><BR>";
+
+    TimeConfHTML += "<div id='GSM' style='display:none'><br><BR><b>GSM Data</b>";
+    TimeConfHTML += "<label for='apn'>APN:</label><input type='text' id='apn' name='apn' value=" + apn + " required>";
+    TimeConfHTML += "<label for='gprs_user'>GPRS User:</label><input type='text' id='gprs_user' name='gprs_user' value=" + gprs_user + " required>";
+    TimeConfHTML += "<label for='gprs_pass'>GPRS Password:</label><input type='password' id='gprs_pass' name='gprs_pass' value=" + gprs_pass + " required>";
     TimeConfHTML += "</div><BR>";
 
     //------------- Start Connectors ------- //
@@ -357,7 +366,6 @@ namespace WiFiManagerNS
     TimeConfHTML += "<input readonly style=width:auto name='system-time' type='datetime-local' value='" + systimeStr + "'>";
     TimeConfHTML += " <button onclick=location.reload() style=width:auto type=button> Refresh </button></label><br>";
 
-    // const char *currentTimeZone = "Europe/Paris";
     TimeConfHTML += "<label for='timezone'>Time Zone</label>";
     TimeConfHTML += "<select id='timezone' name='timezone'>";
     for (int i = 0; i < TZ::zones(); i += 2)
@@ -414,6 +422,8 @@ namespace WiFiManagerNS
     TimeConfHTML += getTemplate(HTML_END);
 
     _wifiManager->server->send_P(200, "text/html", TimeConfHTML.c_str(), TimeConfHTML.length());
+
+    // Serial.print(TimeConfHTML); // debug HTML output
 
     TimeConfHTML = String();
   }
@@ -606,15 +616,35 @@ namespace WiFiManagerNS
       useDisplay = false;
     }
 
+    if (_wifiManager->server->hasArg("logtosd"))
+    {
+      uint8_t useL = atoi((_wifiManager->server->arg("logtosd")).c_str());
+      saveDataSDCard = useL == 1;
+    }
+    else
+    {
+      saveDataSDCard = false;
+    }
+
     if (_wifiManager->server->hasArg("up_interval"))
     {
-      String upInterval=_wifiManager->server->arg("up_interval");
+      String upInterval = _wifiManager->server->arg("up_interval");
       upload_interval = atoi(upInterval.c_str());
     }
 
     if (_wifiManager->server->hasArg("upload"))
     {
       upload = _wifiManager->server->arg("upload").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("ADR"))
+    {
+      uint8_t use_ADR = atoi((_wifiManager->server->arg("ADR")).c_str());
+      lora_ADR = use_ADR == 1;
+    }
+    else
+    {
+      lora_ADR = false;
     }
 
     if (_wifiManager->server->hasArg("API_KEY"))
@@ -632,10 +662,20 @@ namespace WiFiManagerNS
       user_CA = _wifiManager->server->arg("certificate").c_str();
     }
 
-    // if (_wifiManager->server->hasArg("lora_fqz"))
-    // {
-    //   lora_fqz = _wifiManager->server->arg("lora_fqz").c_str();
-    // }
+    if (_wifiManager->server->hasArg("apn"))
+    {
+      apn = _wifiManager->server->arg("apn").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("gprs_user"))
+    {
+      gprs_user = _wifiManager->server->arg("gprs_user").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("gprs_pass"))
+    {
+      gprs_pass = _wifiManager->server->arg("gprs_pass").c_str();
+    }
 
     if (_wifiManager->server->hasArg("OTAA_DEVEUI"))
     {
@@ -664,13 +704,22 @@ namespace WiFiManagerNS
       }
     }
 
+    SPI_con_table[0] = NO;
+    EXTRA_con_table[0] = NO;
+    EXTRA_con_table[1] = NO;
+
     save_Connectors();
     save_Config();
 
-    const char *successResp = "<script>parent.location.href = '/exit';</script>";
+    delay(200);
+
+    const char *successResp = "<script>parent.location.href = '/';</script>";
     const char *failureResp = "<script>parent.alert('fail');</script>";
 
     _wifiManager->server->send(200, "text/html", success ? successResp : failureResp);
+
+    delay(200);
+    ESP.restart();
   }
 
   void bindServerCallback()

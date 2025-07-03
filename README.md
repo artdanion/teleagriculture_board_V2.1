@@ -37,7 +37,9 @@ To get started with the TeleAgriCulture Board V2.1, you will need:
 - A micro USB cable
 - Some sensors and actuators of your choice (optional)
 
-Follow these steps:
+The boards are flashed with the actual firmware at shipping, and ready to use... (or update via OverTheAirUpdate in Config Portal)
+
+Follow these steps: [here a version with pictures](https://gitlab.com/teleagriculture/community/-/blob/main/teleAgriCulture%20Board%20V2.1/Docu/setup.md)
 
 - power the board ( via Micro USB or Waveshare Solar Power Manager board)
 - the board creates a WiFi Access Point ( SSID: <mark style="background-color: lightblue">TeleAgriCulture Board</mark> / Password: <mark style="background-color: lightblue">enter123</mark>)
@@ -46,17 +48,72 @@ Follow these steps:
 - go through all setup pages and choose your settings
 - save the settings
 
-### Board Functions
+ # Board Functions
 
-- Navigate through pages: BOOT BUTTON and SELECT BUTTON
-- Wakeup from Deep Sleep: BOOT BUTTON
-- to enter the Config Mode (with open Config Portal):
-- - press BOOT BUTTON > 5 sec or 
-- - Doueble Reset the board (reset, 1, 2, 3, reset again)
-- Serial Monitor is avaiable with 115200 boud rate
+## Navigation
+- **Navigate through pages**: Use the **BOOT BUTTON** and **SELECT BUTTON** to move between different pages.
+- **Wakeup from Deep Sleep**: Press the **BOOT BUTTON** to wake the board from deep sleep mode.
+
+## Configuration Mode
+To enter the Configuration Mode (with open Config Portal), you can use one of the following methods:
+1. **Long Press**: Press and hold the **BOOT BUTTON** for more than 5 seconds.
+2. **Double Reset**: Perform a double reset by resetting the board, waiting for 1 second, then resetting it again.
+
+## Serial Monitor
+The Serial Monitor is available with a baud rate of **115200**.
+
+## Additional Features
+
+### LoRa Upload
+The board supports LoRa upload for long-range, low-power data transmission.
+
+### No Upload
+The board can operate in a mode where no data is uploaded, useful for local data processing or storage.
+
+### AP Mode
+When the board is not battery-powered, it operates in AP Mode. You can connect to the board's WiFi with the following credentials:
+- **SSID**: Teleagriculture DB
+- **Password**: enter123
+
+Once connected, you can view a dashboard with live sensor data.
+
+### SD Card Logging
+The board supports SD card logging for data storage. Below are the instructions to connect an SD card reader to the SPI connector.
+
+#### Connecting an SD Card Reader
+1. **Identify the SPI Connector**: Refer to the image below for the location of the SPI connector on the board.
+   ![SPI Connector](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SPI_CON.jpeg){width=50% height=50%}
+
+2. **Identify the SD Card Reader Module**: Refer to the image below for the SD card reader module.
+   ![SD Card Reader Module](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SD_CARD-Modul.jpeg){width=50% height=50%}
+
+   I used this SD Card Module: [External Link](https://www.amazon.de/dp/B09YYG6BT3?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1), but you can use any other SD Card Module with SPI connection and 3.3V.
+
+3. **Connections**:
+   - **VCC** to **VCC**
+   - **GND** to **GND**
+   - **MOSI** to **MOSI**
+   - **MISO** to **MISO**
+   - **CS** to **CS**
+
+4. **SD Card Format**: Ensure the SD card is formatted to **FAT32** for compatibility.
+
+## Additional Information
+- **Battery Mode**: When Battery Mode is enabled, certain features may be limited to conserve power.
+- **WiFi Connectivity**: Ensure that your device is within range of the board's WiFi signal for optimal performance.
+- **Sensor Data**: The sensor data displayed at **192.168.4.1** includes real-time readings from various sensors connected to the board.
+
+## Troubleshooting
+- **Connection Issues**: If you encounter difficulties connecting to the board's WiFi, try resetting the board or moving closer to the device.
+- **Serial Monitor**: If the Serial Monitor is not displaying data correctly, ensure that the baud rate is set to **115200**.
+- **SD Card Issues**: If the SD card is not recognized, ensure it is properly formatted to **FAT32** and correctly connected.
 
 For more information on how to use the board, please join our community at https://www.teleagriculture.org
+
+---> see how to get data to teleagriculture.org you need an ID and API token
+Use of the API to get data out : https://gitlab.com/teleagriculture/community/-/blob/e54ab443139c24a1889cc83034cda92408a1d88b/teleAgriCulture%20Board%20V2.1/Docu/API.md
 
 <span style="background-color: #32C8C8">We would love to hear about your experiances with the board and share your projects with us all...</span>
 
 >**for more info about the source code and if you would like to contribute in the coding goto:**  [Docu Page](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Docu)
+there is also a section about integrated sensors.
