@@ -158,7 +158,6 @@
 
 RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR bool loraJoined = false;
-RTC_DATA_ATTR bool loraJoined = false;
 
 // ----- Deep Sleep LORA related -----//
 RTC_DATA_ATTR u4_t RTC_LORAWAN_netid = 0;
@@ -351,8 +350,6 @@ bool initialState; // state of the LED
 bool ledState = false;
 bool gotoSleep = true;
 bool userWakeup = false;
-bool forceConfig = false; // if no config file or DoubleReset detected
-bool freshBoot = true;    // fresh start - not loading LMIC Config
 bool forceConfig = false; // if no config file or DoubleReset detected
 bool freshBoot = true;    // fresh start - not loading LMIC Config
 
