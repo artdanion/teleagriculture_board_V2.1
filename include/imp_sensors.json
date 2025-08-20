@@ -349,13 +349,13 @@
         "data_name": "alt"
       }
     ],
-    "i2c_add": "0x76",
+    "i2c_add": "0x77",
     "possible_i2c_add": [
       {
-        "standard": "0x76"
+        "standard": "0x77"
       },
       {
-        "alt_1": "0x77"
+        "alt_1": "0x76"
       }
     ]
   },
@@ -368,7 +368,7 @@
       {
         "value": 56,
         "valueOrder": "MV",
-        "unit": "%",
+        "unit": "mV",
         "data_name": "ORP"
       },
       {
@@ -411,6 +411,96 @@
         "valueOrder": "DBA",
         "unit": "dBA",
         "data_name": "Sound lvl"
+      }
+    ]
+  },
+  {
+    "sensor-id": 18,
+    "name": "Pressure LVL",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 20,
+        "valueOrder": "DEPTH",
+        "unit": "mm",
+        "data_name": "Pressure lvl"
+      }
+    ]
+  },
+  {
+    "sensor-id": 19,
+    "name": "DFRobot UV",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.2,
+        "valueOrder": "UV_I",
+        "unit": "mW/cm^2",
+        "data_name": "UV Int."
+      }
+    ]
+  },
+  {
+    "sensor-id": 20,
+    "name": "DFR LIGHT",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.2,
+        "valueOrder": "LUX",
+        "unit": "",
+        "data_name": "Light int."
+      }
+    ]
+  },
+  {
+    "sensor-id": 21,
+    "name": "DFR LM35",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.2,
+        "valueOrder": "TEMP",
+        "unit": "°C",
+        "data_name": "temp"
+      }
+    ]
+  },
+  {
+    "sensor-id": 22,
+    "name": "DFR FLAME",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.2,
+        "valueOrder": "VOLT",
+        "unit": "",
+        "data_name": "flame"
+      }
+    ]
+  },
+  {
+    "sensor-id": 23,
+    "name": "DHT11",
+    "con_typ": "ONE_WIRE",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 20.2,
+        "valueOrder": "TEMP",
+        "unit": "°C",
+        "data_name": "temp"
+      },
+      {
+        "value": 55,
+        "valueOrder": "HUMIDITY",
+        "unit": "%",
+        "data_name": "hum"
       }
     ]
   }

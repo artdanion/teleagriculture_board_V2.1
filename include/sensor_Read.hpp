@@ -48,7 +48,9 @@
 
 #define VREF 3.3 // analog reference voltage(Volt) of the ADC
 #define ADC_RES 4095
-#define DHTTYPE DHT22
+#define DHTTYPE1 DHT22
+#define DHTTYPE2 DHT11
+
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define RANGE 5000            // Depth measuring range 5000mm (for water)
 #define CURRENT_INIT 4.00     // Current @ 0mm (uint: mA)
@@ -855,7 +857,7 @@ void readOneWire_Connectors()
                 dht22SensorPin = ONEWIRE_3;
             }
 
-            DHT dht(dht22SensorPin, DHTTYPE);
+            DHT dht(dht22SensorPin, DHTTYPE1);
             dht.begin(dht22SensorPin);
             delay(2000);
 
@@ -867,6 +869,38 @@ void readOneWire_Connectors()
             sensorVector.push_back(newSensor);
         }
         break;
+
+        case DHT_11:
+        {
+            int dht11SensorPin;
+            if (OWi == 0)
+            {
+                dht11SensorPin = ONEWIRE_1;
+            }
+
+            if (OWi == 1)
+            {
+                dht11SensorPin = ONEWIRE_2;
+            }
+
+            if (OWi == 2)
+            {
+                dht11SensorPin = ONEWIRE_3;
+            }
+
+            DHT dht2(dht11SensorPin, DHTTYPE2);
+            dht2.begin(dht11SensorPin);
+            delay(2000);
+
+            Sensor newSensor = allSensors[DHT_22];
+
+            newSensor.measurements[0].value = dht2.readTemperature();
+            newSensor.measurements[1].value = dht2.readHumidity();
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
 
         case DS18B20:
         {

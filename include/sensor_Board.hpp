@@ -28,7 +28,7 @@
 #include <board_credentials.h>
 #include <WString.h>
 
-#define SENSORS_NUM 22      // Number of Sensors implemeted
+#define SENSORS_NUM 23      // Number of Sensors implemeted
 #define MEASURMENT_NUM 8    // max. Sensor values / Sensor (Multi Gas Sensor V1 produces 8 measures to send)
 #define MAX_I2C_ADDRESSES 3 // max. stored I2C addresses / Sensor
 #define I2C_NUM 4
@@ -215,7 +215,8 @@ enum SensorsImplemented
   UV_DFR,
   LIGHT_DFR,
   DFR_LM35,
-  DFR_FLAME
+  DFR_FLAME,
+  DHT_11
 };
 
 class Measurement
@@ -619,13 +620,13 @@ const char *proto_sensors = R"([
         "data_name": "alt"
       }
     ],
-    "i2c_add": "0x76",
+    "i2c_add": "0x77",
     "possible_i2c_add": [
       {
-        "standard": "0x76"
+        "standard": "0x77"
       },
       {
-        "alt_1": "0x77"
+        "alt_1": "0x76"
       }
     ]
   },
@@ -753,6 +754,25 @@ const char *proto_sensors = R"([
         "data_name": "flame"
       }
     ]
+  },
+  {
+    "sensor-id": 23,
+    "name": "DHT11",
+    "con_typ": "ONE_WIRE",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 20.2,
+        "valueOrder": "TEMP",
+        "unit": "°C",
+        "data_name": "temp"
+      },
+      {
+        "value": 55,
+        "valueOrder": "HUMIDITY",
+        "unit": "%",
+        "data_name": "hum"
+      }
+    ]
   }
-
 ])";

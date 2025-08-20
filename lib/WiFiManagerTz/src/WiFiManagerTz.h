@@ -1,14 +1,34 @@
 /*            web server args
+saved by function:
+
+void save_Config(void);
+void save_Connectors(void);
+
+Listing directory: /
+  FILE: connectors.json SIZE: 174
+  FILE: board_config.json       SIZE: 554
+
+values:
+
+BoardID: 1000
+useBattery: 0
+useDisplay: 1
+saveDataSDCard: 0
+useEnterpriseWPA: 0
+useCustomNTP: 0
+useNTP: 1
+API_KEY: xxxxxxxxxxxxxxXXXXXxxxxxxxxxxxxx
 upload: WIFI
-BoardID: 100X
-API_KEY: XXXXXxxxxXXXXxXXXXXXXXXXX
-use-WPA_enterprise: 1
-ANONYMUS: anonymus@example.com
-certificate:
-lora_fqz: EU
+upload_interval: 2
+anonym: anonymus@example.com
+user_CA: -----BEGIN CERTIFICATE----- optional -----END CERTIFICATE-----
 OTAA_DEVEUI: 0000000000000000
 OTAA_APPEUI: 0000000000000000
-OTAA_APPKEY: 0000000000000000000000000000000
+OTAA_APPKEY: 00000000000000000000000000000000
+lora_ADR: 0
+apn: 0000
+gprs_user: XXXXX
+gprs_pass: XXXXX
 i2c_1: -1
 i2c_3: -1
 i2c_2: -1

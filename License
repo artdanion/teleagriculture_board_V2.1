@@ -35,5 +35,17 @@ GNU General Public License for more details.
 To view a copy of the GNU General Public License, go to the following
 location: <http://www.gnu.org/licenses/>.
 
+all libraries are unchanged execpt:
 
+WiFiManagerTz: Copyright (c) 2022 tobozo https://github.com/tobozo
+BatteryCheck: Copyright (c) 2019 Pangodream https://github.com/pangodream/18650CL
+
+MiCS6814-I2C-Library
+ * Copyright (c) 2015 Seeed Technology Inc.  All right reserved.
+ * Version 1 - Author: Jacky Zhang, 2015-03-17, http://www.seeed.cc/
+ *             Modified by: Jack, 2015-08
+ * Version 2 - Author: Loovee, 2016-11-11
+ [1]: https://github.com/eNBeWe/MiCS6814-I2C-PCB
+ [2]: http://wiki.seeedstudio.com/Grove-Multichannel_Gas_Sensor/
+ [3]: https://github.com/paulvha/multichannel-gas
 
