@@ -138,7 +138,7 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 #define DRD_ADDRESS 0
 
-#define DEBUG_PRINT false
+#define DEBUG_PRINT false     // full debug print
 
 #include <ESP_DoubleResetDetector.h>
 #include <Button.h>
@@ -147,8 +147,6 @@
 #include <Adafruit_GFX.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Adafruit_ST7735.h>
-
-// #define DEBUG_PRINT false
 
 // ----- Deep Sleep related -----//
 #define BUTTON_PIN_BITMASK 0x1      // GPIO 0
@@ -202,7 +200,6 @@ void checkButton(void);
 void toggleLED(void);
 void startBlinking(void);
 void stopBlinking(void);
-void openConfig(void);
 void openConfig(void);
 
 // file and storage functions
@@ -399,8 +396,6 @@ void setup()
 
    delay(1000); // for debugging in screen
 
-   delay(1000); // for debugging in screen
-
    Serial.setTxTimeoutMs(5); // set USB CDC Time TX
    Serial.begin(115200);     // start Serial for debuging
 
@@ -420,10 +415,8 @@ void setup()
    ++bootCount;
    Serial.println("\nBoot number: " + String(bootCount));
    Serial.printf("LoRa has joined: %s\n", loraJoined ? "true" : "false");
-   Serial.printf("LoRa has joined: %s\n", loraJoined ? "true" : "false");
 
    if (bootCount == 1 || (bootCount % 720) == 0) // new join once every 24h
-      freshBoot = true;
       freshBoot = true;
    if (bootCount > 60480) // bootCount resets every 84 days
       bootCount = 0;
@@ -449,8 +442,8 @@ void setup()
       Serial.println("Failed to mount SPIFFS file system");
       return;
    }
-   // listDir(SPIFFS, "/", 0);
-   // Serial.println();
+   listDir(SPIFFS, "/", 0);
+   Serial.println();
 
    load_Sensors();    // Prototypes get loaded
    load_Connectors(); // Connectors lookup table
@@ -473,14 +466,9 @@ void setup()
   ADC_con_table[1] = NO;
   ADC_con_table[2] = NO;
   OneWire_con_table[0] = DS18B20;
-  ADC_con_table[1] = NO;
-  ADC_con_table[2] = NO;
-  OneWire_con_table[0] = DS18B20;
   OneWire_con_table[1] = DHT_22;
   OneWire_con_table[2] = NO;
-  OneWire_con_table[2] = NO;
   SPI_con_table[0] = NO;
-  I2C_5V_con_table[0] = NO;
   I2C_5V_con_table[0] = NO;
   EXTRA_con_table[0] = NO;
   EXTRA_con_table[1] = NO;
@@ -497,7 +485,6 @@ void setup()
    // upload = "LORA";
    // upload = "WIFI";
    // useSDCard = true;
-   // useBattery = true;
    // useBattery = false;
 
    /*******************************************************************************
@@ -603,21 +590,9 @@ void setup()
             String Time1 = getDateTime(header);
             setEsp32Time(Time1.c_str());
          }
-         if (!useNTP)
-         {
-            String header = get_header();
-            delay(500);
-            String Time1 = getDateTime(header);
-            setEsp32Time(Time1.c_str());
-         }
       }
 
       stopBlinking();
-   }
-
-   if (forceConfig)
-   {
-      openConfig();
    }
 
    if (forceConfig)
@@ -753,11 +728,6 @@ void loop()
       openConfig();
    }
 
-   if (forceConfig)
-   {
-      openConfig();
-   }
-
    time_t rawtime;
    time(&rawtime);
    localtime_r(&rawtime, &timeInfo); // Get the current local time
@@ -765,7 +735,6 @@ void loop()
    currentDay = timeInfo.tm_mday; // Update the current day
 
    // Check if the day has changed and perform time synchronization if required
-   if ((currentDay != lastDay) && (upload == "WIFI") && !(WiFiManagerNS::NTPEnabled) && freshBoot)
    if ((currentDay != lastDay) && (upload == "WIFI") && !(WiFiManagerNS::NTPEnabled) && freshBoot)
    {
       // The day has changed since the last execution of this block
@@ -816,7 +785,6 @@ void loop()
          gotoSleep = true; // Enable sleep mode if using WiFi and battery power
       }
 
-      if (upload == "LORA" && useBattery)
       if (upload == "LORA" && useBattery)
       {
          gotoSleep = true; // Enable sleep mode if using LoRa and battery power and data transmitted
@@ -948,9 +916,7 @@ void loop()
             Serial.print(F("Can go sleep "));
 
             saveLORA_State();
-            saveLORA_State();
             saveLMICToRTC(TX_INTERVAL);
-            delay(200);
             delay(200);
 
             esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
@@ -988,16 +954,6 @@ void loop()
             gpio_hold_en((gpio_num_t)TFT_BL);
 
             gpio_deep_sleep_hold_en();
-
-            Serial.print("Setup ESP32 to sleep for ");
-            Serial.print(upload_interval);
-            Serial.println(" minutes");
-            Serial.print("wakeup in: ");
-            Serial.print(time_interval);
-            Serial.println(" MicroSeconds");
-
-            Serial.end();
-            Serial.flush();
 
             Serial.print("Setup ESP32 to sleep for ");
             Serial.print(upload_interval);
@@ -1179,9 +1135,6 @@ void loop()
          gpio_hold_en((gpio_num_t)TFT_BL);
 
          gpio_deep_sleep_hold_en();
-
-         Serial.end();
-         Serial.flush();
 
          Serial.end();
          Serial.flush();
@@ -1386,7 +1339,6 @@ void GPIO_wake_up()
    {
       userWakeup = true;
       freshBoot = false;
-      freshBoot = false;
 
       if (useDisplay)
          gotoSleep = false;
@@ -1394,7 +1346,6 @@ void GPIO_wake_up()
 
    if (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER)
    {
-      freshBoot = false;
       freshBoot = false;
    }
 }
@@ -2231,9 +2182,6 @@ void checkLoadedStuff(void)
    // Serial.println();
    // Serial.println("---------------Prototype Sensors loaded -----------");
    // printProtoSensors();
-   // Serial.println();
-   // Serial.println("---------------Prototype Sensors loaded -----------");
-   // printProtoSensors();
    Serial.println();
    Serial.println("---------------Connector table loaded -----------");
 
@@ -2251,6 +2199,7 @@ void checkLoadedStuff(void)
    Serial.printf("BoardID: %d\n", boardID);
    Serial.printf("useBattery: %d\n", useBattery);
    Serial.printf("useDisplay: %d\n", useDisplay);
+   Serial.printf("saveDataSDCard: %d\n", saveDataSDCard);
    Serial.printf("useEnterpriseWPA: %d\n", useEnterpriseWPA);
    Serial.printf("useCustomNTP: %d\n", useCustomNTP);
    Serial.printf("useNTP: %d\n", useNTP);
@@ -2265,6 +2214,9 @@ void checkLoadedStuff(void)
    Serial.printf("OTAA_APPEUI: %s\n", OTAA_APPEUI.c_str());
    Serial.printf("OTAA_APPKEY: %s\n", OTAA_APPKEY.c_str());
    Serial.printf("lora_ADR: %d\n", lora_ADR);
+   Serial.printf("apn: %s\n", apn.c_str());
+   Serial.printf("gprs_user: %s\n", gprs_user.c_str());
+   Serial.printf("gprs_pass: %s\n", gprs_pass.c_str());
 
    Serial.println("\n---------------DEBUGG END -----------");
 
@@ -3497,7 +3449,6 @@ void onEvent(ev_t ev)
 
       loraJoined = true;
       loraJoinFailed = false;
-      loraJoinFailed = false;
       displayRefresh = true;
 
       saveLORA_State();
@@ -3505,15 +3456,6 @@ void onEvent(ev_t ev)
       // Disable link check validation (automatically enabled
       // during join, but because slow data rates change max TX
       // size, we don't use it in this example.
-      if (lora_ADR)
-      {
-         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
-         LMIC_setLinkCheckMode(0);
-      }
-      else
-      {
-         Serial.println("\nuse ADR for LORA (for mobile Nodes)");
-      }
       if (lora_ADR)
       {
          Serial.println("\nuse ADR for LORA (for mobile Nodes)");
@@ -3936,7 +3878,6 @@ void saveLORA_State(void)
 void loadLORA_State()
 {
    Serial.println(F("Load LMIC State from RTC ..."));
-   Serial.println(F("Load LMIC State from RTC ..."));
 
    LMIC_setSession(RTC_LORAWAN_netid, RTC_LORAWAN_devaddr, RTC_LORAWAN_nwkKey, RTC_LORAWAN_artKey);
    LMIC_setSeqnoUp(RTC_LORAWAN_seqnoUp);
@@ -3956,7 +3897,6 @@ void loadLORA_State()
    memcpy(LMIC.channelDrMap, RTC_LORAWAN_channelDrMap, MAX_CHANNELS * sizeof(u2_t));
    LMIC.channelMap = RTC_LORAWAN_channelMap;
 #endif
-   delay(200);
    delay(200);
    Serial.println("LMIC configuration reloaded from RTC Memory.");
 }
