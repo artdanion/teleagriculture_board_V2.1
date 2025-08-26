@@ -1,23 +1,27 @@
+#pragma once
+
 #include <Arduino.h>
 
 #ifndef CUSTOM_LORA_FQZ
 #define CUSTOM_LORA_FQZ "EU 868 MHz"
 #endif
 
-int boardID = 1000;
-String version = "Firmware Version " TAC_VERSION;
-String API_KEY = "xxxxxxxxxxxxxxXXXXXxxxxxxxxxxxxx";
-String lora_fqz = CUSTOM_LORA_FQZ;
-String OTAA_APPEUI = "0000000000000000";                 // TTN --> msb first
-String OTAA_DEVEUI = "0000000000000000";                 // TTN --> msb first
-String OTAA_APPKEY = "00000000000000000000000000000000"; // TTN --> msb first
-String apn = "0000";
-String gprs_user = "XXXXX";
-String gprs_pass = "XXXXX";
+// Change here:
+
+inline int boardID       = 1000;
+inline String version    = "Firmware Version " TAC_VERSION;
+inline String API_KEY    = "xxxxxxxxxxxxxxXXXXXxxxxxxxxxxxxx";
+inline String lora_fqz   = CUSTOM_LORA_FQZ;
+inline String OTAA_APPEUI = "0000000000000000"; 
+inline String OTAA_DEVEUI = "0000000000000000"; 
+inline String OTAA_APPKEY = "00000000000000000000000000000000";
+inline String apn        = "0000";
+inline String gprs_user  = "XXXXX";
+inline String gprs_pass  = "XXXXX";
 
 #define LMIC_PRINTF_TO Serial
 
-const char *kits_ca =
+inline const char *kits_ca =
     "-----BEGIN CERTIFICATE-----\n"
     "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"
     "RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD\n"

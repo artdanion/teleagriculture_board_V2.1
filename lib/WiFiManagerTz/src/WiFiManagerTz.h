@@ -58,6 +58,9 @@ ntp-server-interval: 60
 #include "NTP.hpp"
 #include "TZ.hpp"
 #include <servers.h>
+#include <RTClib.h>
+
+#define MAX_FOUND_I2C 16
 
 void save_Connectors();
 void save_Config();
@@ -73,12 +76,18 @@ namespace WiFiManagerNS
   String TimeConfHTML;
   char systime[64];
 
+  String foundI2C[MAX_FOUND_I2C];
+  int foundCount = 0;
+
   constexpr const char *menuhtml = "<form action='/custom' method='get'><button>Setup Board</button></form><br/>\n";
 
   WiFiManager *_wifiManager;
 
-  String generateDropdown(String con_typ, int sensor_id);
+  String generateDropdown(const String &con_typ, const int &conf, const String &formFieldName);
 
+  bool isFound(String addr);
+  void updateRtcStatus();
+  String generateI2CTable();
   void bindServerCallback();
 
   void init(WiFiManager *manager)
@@ -178,7 +187,7 @@ namespace WiFiManagerNS
 
   void handleRoute()
   {
-    Serial.println("[HTTP] handle route Custom");
+    Serial.println("[HTTP] handle route Custom / Setup Page");
 
     if (useCustomNTP)
     {
@@ -195,11 +204,13 @@ namespace WiFiManagerNS
     TimeConfHTML.replace(FPSTR(T_v), "TeleAgriCulture Board Setup");
     TimeConfHTML += custom_Title_Html;
 
+    // Script to set initial time
     TimeConfHTML += "<script>";
     TimeConfHTML += "window.addEventListener('load', function() { var now = new Date(); var offset = now.getTimezoneOffset() * 60000; var adjustedDate = new Date(now.getTime() - offset);";
     TimeConfHTML += "document.getElementById('set-time').value = adjustedDate.toISOString().substring(0,16); });";
     TimeConfHTML += "</script>";
 
+    // Script to choose upload method
     TimeConfHTML += "<script>";
     TimeConfHTML += "function chooseUploade() { var checked = document.querySelector('input[name=upload]:checked'); var div = document.getElementById('Lora'); var divNTP = document.getElementById('use_NTP'); var divNoNTP = document.getElementById('no_NTP'); var divGSM = document.getElementById('GSM');";
     TimeConfHTML += "if (checked && checked.value == 'LORA') { div.style.display = 'block'; var checkbox = document.getElementById('use-WPA_enterprise'); checkbox.checked = false; divNTP.style.display = 'none'; divNoNTP.style.display = 'block'; divGSM.style.display = 'none'; }";
@@ -208,12 +219,14 @@ namespace WiFiManagerNS
     TimeConfHTML += "else { div.style.display = 'none'; divNTP.style.display = 'block'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; } }";
     TimeConfHTML += "</script>";
 
+    // Script to choose custom NTP settings
     TimeConfHTML += "<script type='text/javascript'>";
     TimeConfHTML += "function chooseCustomNTP() {var customNtp = document.getElementById('custom_ntp'); var ntpList = document.getElementById('ntp_list');var checkBox = document.getElementById('custom_ntp_enable');";
     TimeConfHTML += "if (checkBox.checked == true) {customNtp.style.display = 'block'; ntpList.style.display = 'none';}";
     TimeConfHTML += "else {customNtp.style.display = 'none'; ntpList.style.display = 'block';}}";
     TimeConfHTML += "</script>";
 
+    // Script to choose NTP settings
     TimeConfHTML += "<script type='text/javascript'>";
     TimeConfHTML += "function chooseNTP() {var useNTP = document.getElementById('ntp_Settings');var noNTP = document.getElementById('no_NTP');var checkBox = document.getElementById('use-ntp-server');";
     TimeConfHTML += "if (checkBox.checked == true) {useNTP.style.display = 'block';noNTP.style.display = 'none';}";
@@ -222,8 +235,33 @@ namespace WiFiManagerNS
     TimeConfHTML += "<script type='text/javascript'>";
     TimeConfHTML += "document.addEventListener('DOMContentLoaded', function () { chooseNTP();});";
     TimeConfHTML += "</script>";
-    TimeConfHTML += "<style>strong {color:red;}</style>";
 
+    // Script to update address select options based on I2C sensor selection
+    TimeConfHTML += "<script>";
+    TimeConfHTML += "function updateAddrSelect(sensorSelect, addrSelectId){";
+    TimeConfHTML += "let opt=sensorSelect.options[sensorSelect.selectedIndex];";
+    TimeConfHTML += "let addrs=opt.dataset.addrs?opt.dataset.addrs.split(','):[];";
+    TimeConfHTML += "let addrSelect=document.getElementById(addrSelectId);";
+    TimeConfHTML += "if(!addrSelect)return;";
+    TimeConfHTML += "let preselect=addrSelect.dataset.selectedAddr?parseInt(addrSelect.dataset.selectedAddr):-1;";
+    TimeConfHTML += "addrSelect.innerHTML='';";
+    TimeConfHTML += "addrs.forEach((a,idx)=>{";
+    TimeConfHTML += "let option=document.createElement('option');";
+    TimeConfHTML += "option.value=idx; option.text=a;";
+    TimeConfHTML += "if(idx===preselect) option.selected=true;";
+    TimeConfHTML += "addrSelect.add(option);";
+    TimeConfHTML += "});";
+    TimeConfHTML += "}";
+    TimeConfHTML += "document.addEventListener('DOMContentLoaded',()=>{";
+    TimeConfHTML += "document.querySelectorAll(\"select[id$='_addr']\").forEach(addrSelect=>{";
+    TimeConfHTML += "let sensorSelectId=addrSelect.id.replace('_addr','');";
+    TimeConfHTML += "let sensorSelect=document.getElementById(sensorSelectId);";
+    TimeConfHTML += "if(sensorSelect){updateAddrSelect(sensorSelect,addrSelect.id);}";
+    TimeConfHTML += "});";
+    TimeConfHTML += "});";
+    TimeConfHTML += "</script>";
+
+    TimeConfHTML += "<style>strong {color:red;}</style>";
     TimeConfHTML += getTemplate(HTML_STYLE);
 
     TimeConfHTML += getTemplate(HTML_HEAD_END);
@@ -241,7 +279,7 @@ namespace WiFiManagerNS
     TimeConfHTML += "<td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()' checked /><label for='upload1'> WiFi</label></td>";
     TimeConfHTML += "<td><input type='radio' id='loracheck' name='upload' value='LORA' onchange='chooseUploade()' /><label for='upload2'> LoRa</label></td>";
     TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' /><label for='upload3'> NO upload</label></td>";
-    //TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
+    // TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
     TimeConfHTML += "</tr></table><br>";
 
     if (useBattery)
@@ -303,35 +341,25 @@ namespace WiFiManagerNS
 
     //------------- Start Connectors ------- //
 
-    TimeConfHTML += "<BR><h2>Connectors:</h2>";
+    TimeConfHTML += generateI2CTable();
+
+    TimeConfHTML += "<h2>Connectors:</h2>";
 
     TimeConfHTML += "<table style='width:100%'><tbody><tr><td colspan='2'><h3>I2C Connectors</h3></td></tr><tr>";
 
     TimeConfHTML += "<td><label for='i2c_1'>I2C_1</label>";
-
-    TimeConfHTML += "<select id='I2C_1' name='i2c_1'>";
-
-    TimeConfHTML += generateDropdown("I2C", I2C_con_table[0]);
+    TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[0].sensorIndex), "i2c_1");
 
     TimeConfHTML += "<td><label for='i2c_3'>I2C_3</label>";
-
-    TimeConfHTML += "<select id='I2C_3' name='i2c_3'>";
-
-    TimeConfHTML += generateDropdown("I2C", I2C_con_table[1]);
+    TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[1].sensorIndex), "i2c_3");
 
     TimeConfHTML += "</tr><tr>";
 
     TimeConfHTML += "<td><label for='i2c_2'>I2C_2</label>";
-
-    TimeConfHTML += "<select id='I2C_2' name='i2c_2'>";
-
-    TimeConfHTML += generateDropdown("I2C", I2C_con_table[2]);
+    TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[2].sensorIndex), "i2c_2");
 
     TimeConfHTML += "<td><label for='i2c_4'>I2C_4</label>";
-
-    TimeConfHTML += "<select id='I2C_4' name='i2c_4'>";
-
-    TimeConfHTML += generateDropdown("I2C", I2C_con_table[3]);
+    TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[3].sensorIndex), "i2c_4");
 
     TimeConfHTML += "</tr></tbody></table>";
 
@@ -339,44 +367,28 @@ namespace WiFiManagerNS
     TimeConfHTML += "<td><h3>1-Wire Connectors</h3></td></tr><tr>";
 
     TimeConfHTML += "<td><label for='adc_1'>ADC_1</label>";
-
-    TimeConfHTML += "<select id='ADC_1' name='adc_1'>";
-
-    TimeConfHTML += generateDropdown("ADC", ADC_con_table[0]);
+    TimeConfHTML += generateDropdown("ADC", ADC_con_table[0], "adc_1");
 
     TimeConfHTML += "<td><label for='onewire_1'>1-Wire_1</label>";
-
-    TimeConfHTML += "<select id='onewire_1' name='onewire_1'>";
-
-    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[0]);
+    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[0], "onewire_1");
 
     TimeConfHTML += "</tr><tr><td><label for='adc_2'>ADC_2</label>";
-
-    TimeConfHTML += "<select id='ADC_2' name='adc_2'>";
-
-    TimeConfHTML += generateDropdown("ADC", ADC_con_table[1]);
+    TimeConfHTML += generateDropdown("ADC", ADC_con_table[1], "adc_2");
 
     TimeConfHTML += "<td><label for='onewire_2'>1-Wire_2</label>";
-
-    TimeConfHTML += "<select id='onewire_2' name='onewire_2'>";
-
-    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[1]);
+    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[1], "onewire_2");
 
     TimeConfHTML += "</tr><tr><td><label for='adc_3'>ADC_3</label>";
-
-    TimeConfHTML += "<select id='ADC_3' name='adc_3'>";
-
-    TimeConfHTML += generateDropdown("ADC", ADC_con_table[2]);
+    TimeConfHTML += generateDropdown("ADC", ADC_con_table[2], "adc_3");
 
     TimeConfHTML += "<td><label for='onewire_3'>1-Wire_3</label>";
+    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[2], "onewire_3");
 
-    TimeConfHTML += "<select id='onewire_3' name='onewire_3'>";
-
-    TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[2]);
-    TimeConfHTML += "</tr></tbody><label for='I2C_5V'>I2C_5V Con</label><select id='I2C_5V' name='I2C_5V'>";
-    TimeConfHTML += generateDropdown("I2C_5V", I2C_5V_con_table[0]);
+    TimeConfHTML += "</tr></tbody><label for='I2C_5V'>I2C_5V Con</label>";
+    TimeConfHTML += generateDropdown("I2C_5V", int(I2C_5V_con_table[0].sensorIndex), "I2C_5V");
     TimeConfHTML += " </table><BR>";
 
+    // start time section
     TimeConfHTML += "<BR><h2>Time Settings</h2>";
 
     String systimeStr = getSystimeStr();
@@ -561,29 +573,52 @@ namespace WiFiManagerNS
       boardID = atoi(_wifiManager->server->arg("BoardID").c_str());
     }
 
+    /***************************************CONNECTORS**************************************************** */
+
     if (_wifiManager->server->hasArg("i2c_1"))
     {
-      I2C_con_table[0] = atoi(_wifiManager->server->arg("i2c_1").c_str());
+      I2C_con_table[0].sensorIndex = atoi(_wifiManager->server->arg("i2c_1").c_str());
+    }
+
+    if (_wifiManager->server->hasArg("i2c_1_addr"))
+    {
+      I2C_con_table[0].addrIndex = atoi(_wifiManager->server->arg("i2c_1_addr").c_str());
     }
 
     if (_wifiManager->server->hasArg("i2c_2"))
     {
-      I2C_con_table[1] = atoi(_wifiManager->server->arg("i2c_2").c_str());
+      I2C_con_table[1].sensorIndex = atoi(_wifiManager->server->arg("i2c_2").c_str());
+    }
+    if (_wifiManager->server->hasArg("i2c_2_addr"))
+    {
+      I2C_con_table[1].addrIndex = atoi(_wifiManager->server->arg("i2c_2_addr").c_str());
     }
 
     if (_wifiManager->server->hasArg("i2c_3"))
     {
-      I2C_con_table[2] = atoi(_wifiManager->server->arg("i2c_3").c_str());
+      I2C_con_table[2].sensorIndex = atoi(_wifiManager->server->arg("i2c_3").c_str());
+    }
+    if (_wifiManager->server->hasArg("i2c_3_addr"))
+    {
+      I2C_con_table[2].addrIndex = atoi(_wifiManager->server->arg("i2c_3_addr").c_str());
     }
 
     if (_wifiManager->server->hasArg("i2c_4"))
     {
-      I2C_con_table[3] = atoi(_wifiManager->server->arg("i2c_4").c_str());
+      I2C_con_table[3].sensorIndex = atoi(_wifiManager->server->arg("i2c_4").c_str());
+    }
+    if (_wifiManager->server->hasArg("i2c_4_addr"))
+    {
+      I2C_con_table[3].addrIndex = atoi(_wifiManager->server->arg("i2c_4_addr").c_str());
     }
 
     if (_wifiManager->server->hasArg("I2C_5V"))
     {
-      I2C_5V_con_table[0] = atoi(_wifiManager->server->arg("I2C_5V").c_str());
+      I2C_5V_con_table[0].sensorIndex = atoi(_wifiManager->server->arg("I2C_5V").c_str());
+    }
+    if (_wifiManager->server->hasArg("I2C_5V_addr"))
+    {
+      I2C_5V_con_table[0].addrIndex = atoi(_wifiManager->server->arg("I2C_5V_addr").c_str());
     }
 
     if (_wifiManager->server->hasArg("adc_1"))
@@ -724,6 +759,38 @@ namespace WiFiManagerNS
       }
     }
 
+    updateRtcStatus();
+
+    if (rtcEnabled)
+    {
+      RTC_DS3231 rtc;
+
+      rtc.begin();
+      rtc.adjust(setTime_value.c_str());
+
+      Serial.println(setTime_value.c_str());
+
+      DateTime now = rtc.now();
+      if (now.year() < 2024)
+      {
+        Serial.println("RTC not set, set to compile time");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      }
+      Serial.print("Current RTC time: ");
+      Serial.print(now.year());
+      Serial.print("-");
+      Serial.print(now.month());
+      Serial.print("-");
+      Serial.print(now.day());
+      Serial.print(" ");
+      Serial.print(now.hour());
+      Serial.print(":");
+      Serial.print(now.minute());
+      Serial.print(":");
+      Serial.print(now.second());
+      Serial.println();
+    }
+
     SPI_con_table[0] = NO;
     EXTRA_con_table[0] = NO;
     EXTRA_con_table[1] = NO;
@@ -749,40 +816,169 @@ namespace WiFiManagerNS
     _wifiManager->server->on("/favicon.ico", handleFavicon); // changed to imbedded png/base64 link
   }
 
-  // function that takes a connector type and a sensor id as parameters and generates dropdown menu
-  String generateDropdown(String con_typ, int sensor_id)
+  /*******************DropDown******************************************************************* */
+
+  String generateDropdown(const String &con_typ, const int &conf, const String &formFieldName)
   {
-    // create an empty string to store the dropdown
-    String dropdown = "";
+    String dropdown;
 
-    // add the 'NO' option
-    dropdown += "<option value='-1'>NO</option>";
+    // --- Sensor selection ---
+    dropdown += "<select id='" + formFieldName + "' name='" + formFieldName +
+                "' onchange='updateAddrSelect(this, \"" + formFieldName + "_addr\")'>";
 
-    // loop through all sensors
+    dropdown += "<option value='-1'";
+    if (conf < 0)
+      dropdown += " selected";
+    dropdown += ">NO</option>";
+
     for (int i = 0; i < SENSORS_NUM; i++)
     {
-      // check if the current sensor matches the connector type
       if (allSensors[i].con_typ == con_typ)
       {
-        // check if the current sensor matches the sensor id
-        if (int(allSensors[i].sensor_id) == (sensor_id + 1)) // id starts at 1 // enum at 0
+        int optVal = int(allSensors[i].sensor_id) - 1;
+
+        // possible_i2c_add added as data-addrs attribute for JS
+        String dataAttr = "";
+        if (con_typ == "I2C" || con_typ == "I2C_5V")
         {
-          // add the selected attribute to that option
-          dropdown += "<option value='" + String(int(allSensors[i].sensor_id) - 1) + "' selected>" + allSensors[i].sensor_name + "</option>";
+          dataAttr = " data-addrs='";
+          bool first = true;
+          for (int j = 0; j < 2; j++)
+          {
+            if (allSensors[i].possible_i2c_add[j].length() > 0)
+            {
+              if (!first)
+                dataAttr += ",";
+              dataAttr += allSensors[i].possible_i2c_add[j];
+              first = false;
+            }
+          }
+          dataAttr += "'";
         }
-        else
+
+        dropdown += "<option value='" + String(optVal) + "'" + dataAttr;
+        if (conf == optVal)
+          dropdown += " selected";
+        dropdown += ">" + allSensors[i].sensor_name + "</option>";
+      }
+    }
+
+    dropdown += "</select>";
+
+    // --- Adress CHoosen (filled by JS) ---
+    if (con_typ == "I2C" || con_typ == "I2C_5V")
+    {
+      dropdown += "<br><label for='" + formFieldName + "_addr'>I2C Addr</label>";
+      dropdown += "<select id='" + formFieldName + "_addr' name='" + formFieldName + "_addr'></select>";
+    }
+
+    dropdown += "</td>";
+    return dropdown;
+  }
+
+  String generateI2CTable()
+  {
+    String i2c_html = "<h3 style='text-align:center;'>I2C Scan</h3>";
+    i2c_html += "<table border='1' style='border-collapse:collapse; width:100%; text-align:center;'>";
+
+    Serial.println("[I2C] Scanning I2C bus...");
+
+    byte error, address;
+    int count = 0;
+    int col = 0;
+
+    foundCount = 0; // Reset global list
+    i2c_html += "<tr>";
+
+    digitalWrite(SW_3V3, HIGH);
+    digitalWrite(SW_5V, HIGH);
+
+    for (address = 1; address < 127; address++)
+    {
+      Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
+      Wire.beginTransmission(address);
+      error = Wire.endTransmission();
+      if (error == 0)
+      {
+        // save addresses
+        if (foundCount < MAX_FOUND_I2C)
         {
-          // otherwise, add a normal option without the selected attribute
-          dropdown += "<option value='" + String(int(allSensors[i].sensor_id) - 1) + "'>" + allSensors[i].sensor_name + "</option>";
+          String addrStr = "0x";
+          if (address < 16)
+            addrStr += "0";
+          addrStr += String(address, HEX);
+          foundI2C[foundCount++] = addrStr;
+        }
+
+        // HTML-Ausgabe
+        count++;
+        i2c_html += "<td>0x";
+        if (address < 16)
+          i2c_html += "0";
+        i2c_html += String(address, HEX);
+        i2c_html += "</td>";
+
+        col++;
+        if (col >= 6)
+        {
+          i2c_html += "</tr><tr>";
+          col = 0;
         }
       }
     }
 
-    // add the closing tag of the select element and the table cell element
-    dropdown += "</select></td>";
+    digitalWrite(SW_3V3, LOW);
+    digitalWrite(SW_5V, LOW);
 
-    // return the dropdown string
-    return dropdown;
+    if (count == 0)
+    {
+      i2c_html += "<td>No I2C-Devices found</td>";
+      Serial.println("[I2C] No I2C devices found.");
+    }
+
+    i2c_html += "</tr></table>";
+
+    i2c_html += "<p style='text-align:center; font-weight:bold; margin-top:8px;'>";
+    i2c_html += String(count);
+    i2c_html += " I2C ";
+    i2c_html += (count == 1 ? " address found" : " addresses found");
+    i2c_html += "</p><BR>";
+
+    Serial.println("[I2C] Scan complete.");
+    Serial.print("[I2C] addresses found ");
+    Serial.println(count);
+
+    return i2c_html;
   }
 
-};
+  bool isFound(String addr)
+  {
+    for (int i = 0; i < foundCount; i++)
+    {
+      if (foundI2C[i].equalsIgnoreCase(addr))
+        return true;
+    }
+    return false;
+  }
+
+  void updateRtcStatus()
+  {
+    rtcEnabled = false;
+
+    // check all I2C connections
+    for (int i = 0; i < 4; i++)
+    {
+      if (I2C_con_table[i].sensorIndex == RTCDS3231)
+      {
+        rtcEnabled = true;
+        return;
+      }
+    }
+
+    // check 5V connection
+    if (I2C_5V_con_table[0].sensorIndex == RTCDS3231)
+    {
+      rtcEnabled = true;
+    }
+  }
+}

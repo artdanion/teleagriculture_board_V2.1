@@ -25,6 +25,7 @@
 \*/
 
 // TODO: a system for multible simular measurments, NAMING
+#pragma once
 
 #include <Arduino.h>
 #include <esp_adc_cal.h>
@@ -33,9 +34,13 @@
 #include <map>
 
 #include <Adafruit_Sensor.h>
-#include <BMP280.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
+#include <Adafruit_BME680.h>
+#include <Adafruit_ADS1X15.h>
 #include "Adafruit_VEML7700.h"
+#include <hp_BH1750.h>
+#include <SHT2x.h>
 #include <Multichannel_Gas_GMXXX.h>
 #include <MiCS6814-I2C.h>
 #include <DHT.h>
@@ -44,7 +49,7 @@
 #include "drivers/DSTherm.h"
 #include "utils/Placeholder.h"
 #include <GravityTDS.h>
-#include <Adafruit_ADS1X15.h>
+#include <RTClib.h>
 
 #define VREF 3.3 // analog reference voltage(Volt) of the ADC
 #define ADC_RES 4095
@@ -67,29 +72,13 @@
 
 */
 
-Sensor allSensors[SENSORS_NUM];
-Measurement measurements[MEASURMENT_NUM];
-
-// Global vector to store connected Sensor data
-std::vector<Sensor> sensorVector;
-std::vector<Measurement> show_measurements;
-
-esp_adc_cal_characteristics_t adc_cal;
-
 // flag for saving Connector data
 bool shouldSaveConfig = false;
 
 // ----- Sensor section ----- //
 
-Adafruit_BME280 bme;
-BMP280 bmp280;
-Adafruit_VEML7700 veml = Adafruit_VEML7700();
-
 GAS_GMXXX<TwoWire> gas;
 MiCS6814 multiGasV1;
-
-GravityTDS gravityTds;
-Adafruit_ADS1115 ads;
 
 float temperature = 22, tdsValue = 0;
 
@@ -100,7 +89,6 @@ void readOneWire_Connectors();
 void readI2C_5V_Connector();
 void readSPI_Connector();
 void readEXTRA_Connectors();
-float getBatteryVoltage();
 void updateDataNames(std::vector<Sensor> &sensorVector);
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max);
 
@@ -167,17 +155,15 @@ void sensorRead()
 
     sensorVector.clear();
 
-    // TwoWire I2CCON = TwoWire(0);
-    // I2CCON.begin(I2C_SDA, I2C_SCL);
-
     Wire.setPins(I2C_SDA, I2C_SCL);
 
-    if (I2C_5V_con_table[0] == MULTIGAS_V1)
+    if (I2C_5V_con_table[0].sensorIndex == MULTIGAS_V1)
     {
-        // Connect to sensor using default I2C address (0x04)
-        // Alternatively the address can be passed to begin(addr)
+        // MiCS6814 multiGasV1;
+        String addrStr = allSensors[MULTIGAS_V1].possible_i2c_add[I2C_5V_con_table[0].addrIndex];
+        uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
 
-        if (multiGasV1.begin(0x04) == true)
+        if (multiGasV1.begin(addr) == true)
         {
             // Turn heater element on
             multiGasV1.powerOn();
@@ -214,11 +200,11 @@ void readI2C_Connectors()
 {
     // TwoWire I2CCON = TwoWire(0);
     // I2CCON.begin(I2C_SDA, I2C_SCL);
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
 
     for (int j = 0; j < I2C_NUM; j++)
     {
-        switch (I2C_con_table[j])
+        switch (int(I2C_con_table[j].sensorIndex))
         {
         case NO:
         {
@@ -230,22 +216,40 @@ void readI2C_Connectors()
 
         case BMP_280:
         {
-            float pressure, altitude;
-            uint8_t addressValue;
+            String addrStr = allSensors[BMP_280].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
 
-            bmp280.begin();
+            Adafruit_BMP280 bmp;
+            float pressure, altitude;
+
+            if (!bmp.begin(addr))
+            {
+                Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                                 "try a different address!"));
+                while (1)
+                    delay(10);
+            }
             delay(100);
-            bmp280.setCtrlMeasMode(BMP280::eCtrlMeasMode_t::eCtrlMeasModeForced);
-            bmp280.setConfigTStandby(BMP280::eConfigTStandby_t::eConfigTStandby_1000);
-            bmp280.setCtrlMeasSamplingTemp(BMP280::eSampling_t::eSampling_X16);
-            bmp280.setCtrlMeasSamplingPress(BMP280::eSampling_t::eSampling_X16);
-            delay(1000);
+
+            /* Default settings from datasheet. */
+            bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
+                            Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                            Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                            Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                            Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
 
             Sensor newSensor = allSensors[BMP_280];
-            newSensor.measurements[0].value = bmp280.getTemperature();
-            pressure = bmp280.getPressure();
-            newSensor.measurements[1].value = (double)(pressure / 100.00F) + 20;                        // 20 as offset ?!?
-            newSensor.measurements[2].value = bmp280.calAltitude(pressure, SEALEVELPRESSURE_HPA + 21);  // 21 as offset ?!?
+
+            if (bmp.takeForcedMeasurement())
+            {
+                newSensor.measurements[0].value = bmp.readTemperature();
+                newSensor.measurements[1].value = (double)(bmp.readPressure() / 100.00F);
+                newSensor.measurements[2].value = bmp.readAltitude(SEALEVELPRESSURE_HPA);
+            }
+            else
+            {
+                Serial.println("Forced measurement failed!");
+            }
 
             sensorVector.push_back(newSensor);
         }
@@ -253,10 +257,13 @@ void readI2C_Connectors()
 
         case BME_280:
         {
+            Adafruit_BME280 bme;
             unsigned status;
-            uint8_t addressValue;
 
-            status = bme.begin(0x76, &Wire); // addressValue, &I2CCON);
+            String addrStr = allSensors[BME_280].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            status = bme.begin(addr, &Wire);
             if (!status)
             {
                 Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
@@ -334,9 +341,10 @@ void readI2C_Connectors()
 
         case VEML7700:
         {
+            Adafruit_VEML7700 veml = Adafruit_VEML7700();
             //          See Vishy App Note "Designing the VEML7700 Into an Application"
             //          Vishay Document Number: 84323, Fig. 24 Flow Chart
-            if (!veml.begin(&Wire))
+            if (!veml.begin(&Wire)) // just one i2c address known
             {
                 Serial.println("Sensor VEML7700 not found");
                 break;
@@ -353,8 +361,13 @@ void readI2C_Connectors()
 
         case ADS1115:
         {
+            Adafruit_ADS1115 ads;
             ads.setGain(GAIN_ONE); // 1x gain   +/- 4.096V  1 bit = 0.125mV
-            if (!ads.begin(0x48, &Wire))
+
+            String addrStr = allSensors[ADS1115].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            if (!ads.begin(addr, &Wire))
             {
                 Serial.println("16-Bit ADC ADS1115 not found");
                 break;
@@ -433,6 +446,85 @@ void readI2C_Connectors()
         }
         break;
 
+        case SHT_21:
+        {
+            SHT2x sht2x;
+            float temp, humi;
+
+            // SHT21 i2c address 0x40
+            if (!sht2x.begin())
+            {
+                Serial.println("SHT21 not found");
+                break;
+            }
+
+            temp = sht2x.readTemperature();
+            humi = sht2x.readHumidity();
+
+            Sensor newSensor = allSensors[SHT_21];
+            newSensor.measurements[0].value = temp;
+            newSensor.measurements[1].value = humi;
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case BH_1750:
+        {
+            String addrStr = allSensors[BH_1750].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            hp_BH1750 lightSensor;
+            lightSensor.begin(addr, &Wire);
+            lightSensor.start();              // starts a measurement
+            float lux = lightSensor.getLux(); //  waits until a conversion finished
+
+            Sensor newSensor = allSensors[BH_1750];
+            newSensor.measurements[0].value = lux;
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case RTCDS3231:
+        {
+            RTC_DS3231 rtc;
+            rtc.begin();
+
+            Sensor newSensor = allSensors[RTCDS3231];
+            newSensor.measurements[0].value = rtc.getTemperature();
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case BMP_680:
+        {
+            Adafruit_BME680 bme;
+            bme.begin();
+
+            // Set up oversampling and filter initialization
+            bme.setTemperatureOversampling(BME680_OS_8X);
+            bme.setHumidityOversampling(BME680_OS_2X);
+            bme.setPressureOversampling(BME680_OS_4X);
+            bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+            bme.setGasHeater(320, 150); // 320*C for 150 ms
+
+            delay(300);
+            bme.beginReading();
+            delay(1000); // wait for the measurement to complete
+            bme.endReading();
+
+            Sensor newSensor = allSensors[BMP_680];
+            newSensor.measurements[0].value = bme.readTemperature();
+            newSensor.measurements[1].value = bme.readHumidity();
+            newSensor.measurements[2].value = bme.readPressure();
+            newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
+            newSensor.measurements[4].value = (bme.gas_resistance / 1000.0);
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
         default:
             break;
         }
@@ -455,6 +547,7 @@ void readADC_Connectors()
 
         case TDS:
         {
+            GravityTDS gravityTds;
 
             int analogBuffer[SCOUNT]; // store the analog value in the array, read from ADC
             int analogBufferTemp[SCOUNT];
@@ -705,7 +798,7 @@ void readADC_Connectors()
         case LIGHT_DFR:
         {
             int lightPin;
-           uint32_t raw;
+            uint32_t raw;
             uint32_t millivolts;
 
             if (i == 0)
@@ -741,10 +834,10 @@ void readADC_Connectors()
         }
         break;
 
-         case DFR_LM35:
+        case DFR_LM35:
         {
             int lm35Pin;
-           uint32_t raw;
+            uint32_t raw;
             uint32_t millivolts;
 
             if (i == 0)
@@ -773,7 +866,7 @@ void readADC_Connectors()
 
             Sensor newSensor = allSensors[DFR_LM35];
 
-            float temp = millivolts/10;
+            float temp = millivolts / 10;
 
             newSensor.measurements[0].value = temp;
             sensorVector.push_back(newSensor);
@@ -783,7 +876,7 @@ void readADC_Connectors()
         case DFR_FLAME:
         {
             int flamePin;
-           uint32_t raw;
+            uint32_t raw;
             uint32_t millivolts;
 
             if (i == 0)
@@ -819,7 +912,7 @@ void readADC_Connectors()
         }
         break;
 
-         default:
+        default:
             break;
         }
     }
@@ -901,7 +994,6 @@ void readOneWire_Connectors()
         }
         break;
 
-
         case DS18B20:
         {
 
@@ -975,9 +1067,12 @@ void readOneWire_Connectors()
 
 void readI2C_5V_Connector()
 {
-    if (I2C_5V_con_table[0] == MULTIGAS)
+    if (I2C_5V_con_table[0].sensorIndex == MULTIGAS)
     {
-        gas.begin(Wire, 0x08); // use the hardware I2C
+        String addrStr = allSensors[MULTIGAS].possible_i2c_add[I2C_5V_con_table[0].addrIndex];
+        uint8_t addr_i2c = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+        gas.begin(Wire, addr_i2c);
         static uint8_t recv_cmd[8] = {};
         int PPM = 0;
         double lgPPM;
@@ -1073,13 +1168,14 @@ void readI2C_5V_Connector()
 
         Wire.end();
     }
-    else if (I2C_5V_con_table[0] == MULTIGAS_V1)
+    else if (I2C_5V_con_table[0].sensorIndex == MULTIGAS_V1)
     {
         MiCS6814 multiGasV1;
-        // Connect to sensor using default I2C address (0x04)
-        // Alternatively the address can be passed to begin(addr)
 
-        multiGasV1.begin(0x04);
+        String addrStr = allSensors[MULTIGAS_V1].possible_i2c_add[I2C_5V_con_table[0].addrIndex];
+        uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+        multiGasV1.begin(addr);
         multiGasV1.powerOn();
 
         delay(200);
@@ -1246,15 +1342,6 @@ static void printScratchpad(const DSTherm::Scratchpad &scrpd)
     Serial.print(" C");
 
     Serial.println();
-}
-
-float getBatteryVoltage()
-{
-    uint32_t raw = adc1_get_raw(ADC1_CHANNEL_3);
-    uint32_t millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
-    const uint32_t upper_divider = 442;
-    const uint32_t lower_divider = 160;
-    return (float)(upper_divider + lower_divider) / lower_divider / 1000 * millivolts;
 }
 
 void updateDataNames(std::vector<Sensor> &sensorVector)

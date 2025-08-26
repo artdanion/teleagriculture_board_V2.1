@@ -24,15 +24,11 @@
         "data_name": "alt"
       }
     ],
-    "i2c_add": "0x76",
-    "possible_i2c_add": [
-      {
-        "standard": "0x77"
-      },
-      {
-        "alt_1": "0x76"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x77",
+      "alt_1": "0x76"
+    }
   },
   {
     "sensor-id": 2,
@@ -47,15 +43,11 @@
         "data_name": "height"
       }
     ],
-    "i2c_add": "0x78",
-    "possible_i2c_add": [
-      {
-        "standard": "0x78"
-      },
-      {
-        "alt_1": "0x77"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x78",
+      "alt_1": "0x77"
+    }
   },
   {
     "sensor-id": 3,
@@ -76,12 +68,10 @@
         "data_name": "ambient"
       }
     ],
-    "i2c_add": "0x10",
-    "possible_i2c_add": [
-      {
-        "standard": "0x10"
-      }
-    ]
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x10"
+    }
   },
   {
     "sensor-id": 4,
@@ -120,7 +110,7 @@
       {
         "value": 300,
         "valueOrder": "MOIS",
-        "unit": ".",
+        "unit": "raw",
         "data_name": "mois"
       }
     ]
@@ -178,15 +168,11 @@
         "data_name": "NO2"
       }
     ],
-    "i2c_add": "0x08",
-    "possible_i2c_add": [
-      {
-        "standard": "0x08"
-      },
-      {
-        "alt_1": "0x55"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x08",
+      "alt_1": "0x55"
+    }
   },
   {
     "sensor-id": 10,
@@ -243,19 +229,15 @@
         "data_name": "C2H5OH"
       }
     ],
-    "i2c_add": "0x04",
-    "possible_i2c_add": [
-      {
-        "standard": "0x04"
-      },
-      {
-        "alt_1": "0x19"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x04",
+      "alt_1": "0x19"
+    }
   },
   {
     "sensor-id": 11,
-    "name": "RTC DS3231",
+    "name": "RTCDS3231",
     "con_typ": "I2C",
     "returnCount": 1,
     "measurements": [
@@ -266,15 +248,10 @@
         "data_name": "Temp"
       }
     ],
-    "i2c_add": "0x68",
-    "possible_i2c_add": [
-      {
-        "standard": "0x04"
-      },
-      {
-        "alt_1": "0x08"
-      }
-    ]
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x68"
+    }
   },
   {
     "sensor-id": 12,
@@ -318,7 +295,7 @@
       }
     ]
   },
-   {
+  {
     "sensor-id": 15,
     "name": "BME_280",
     "con_typ": "I2C",
@@ -349,15 +326,11 @@
         "data_name": "alt"
       }
     ],
-    "i2c_add": "0x77",
-    "possible_i2c_add": [
-      {
-        "standard": "0x77"
-      },
-      {
-        "alt_1": "0x76"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x77",
+      "alt_1": "0x76"
+    }
   },
   {
     "sensor-id": 16,
@@ -390,15 +363,11 @@
         "data_name": "PH"
       }
     ],
-    "i2c_add": "0x48",
-    "possible_i2c_add": [
-      {
-        "standard": "0x48"
-      },
-      {
-        "alt_1": "0x49"
-      }
-    ]
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x48",
+      "alt_1": "0x49"
+    }
   },
   {
     "sensor-id": 17,
@@ -451,7 +420,7 @@
       {
         "value": 0.2,
         "valueOrder": "LUX",
-        "unit": "",
+        "unit": "lx",
         "data_name": "Light int."
       }
     ]
@@ -479,7 +448,7 @@
       {
         "value": 0.2,
         "valueOrder": "VOLT",
-        "unit": "",
+        "unit": "V",
         "data_name": "flame"
       }
     ]
@@ -503,5 +472,91 @@
         "data_name": "hum"
       }
     ]
+  },
+  {
+    "sensor-id": 24,
+    "name": "BMP_680",
+    "con_typ": "I2C",
+    "returnCount": 5,
+    "measurements": [
+      {
+        "value": 20,
+        "valueOrder": "TEMP",
+        "unit": "°C",
+        "data_name": "Temp"
+      },
+      {
+        "value": 40.2,
+        "valueOrder": "HUMIDITY",
+        "unit": "%",
+        "data_name": "hum"
+      },
+      {
+        "value": 1000.5,
+        "valueOrder": "PRESSURE",
+        "unit": "hPa",
+        "data_name": "press"
+      },
+      {
+        "value": 100,
+        "valueOrder": "ALTITUDE",
+        "unit": "m",
+        "data_name": "alt"
+      },
+      {
+        "value": 22.5,
+        "valueOrder": "KOHM",
+        "unit": "kΩ",
+        "data_name": "resist"
+      }
+    ],
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x77",
+      "alt_1": "0x76"
+    }
+  },
+  {
+    "sensor-id": 25,
+    "name": "BH_1750",
+    "con_typ": "I2C",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 100.5,
+        "valueOrder": "LUX",
+        "unit": "lx",
+        "data_name": "lux"
+      }
+    ],
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x23",
+      "alt_1": "0x5C"
+    }
+  },
+  {
+    "sensor-id": 26,
+    "name": "SHT_21",
+    "con_typ": "I2C",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 20.5,
+        "valueOrder": "TEMP",
+        "unit": "°C",
+        "data_name": "temp"
+      },
+      {
+        "value": 50.5,
+        "valueOrder": "HUMIDITY",
+        "unit": "%",
+        "data_name": "hum"
+      }
+    ],
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x40"
+    }
   }
 ]
