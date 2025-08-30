@@ -51,6 +51,10 @@
 #include <Adafruit_GFX.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Adafruit_ST7735.h>
+#include <Fonts/FreeSans12pt7b.h>
+#include <ui_functions.h>
+#include <def_Board.h>
+#include <web_functions.h>
 
 
 // ------------------- RTC Variablen -------------------
@@ -115,15 +119,10 @@ Ticker blinker;
 Button upButton(LEFT_BUTTON_PIN);
 Button downButton(RIGHT_BUTTON_PIN);
 
-RTC_DS3231 rtc;
-
 // ------------------- Statusvariablen -------------------
 int backlight_pwm = 250;
 bool displayRefresh = true;
 
-const unsigned TX_INTERVAL = 30U;
-bool loraJoinFailed = false;
-bool loraDataTransmitted = false;
 
 bool portalRunning = false;
 bool _enteredConfigMode = false;
@@ -132,7 +131,6 @@ bool configSaved = false;
 int total_measurement_pages = 1;
 int currentPage = 0;
 int lastPage = -1;
-time_t prevDisplay = 0;
 int num_pages = NUM_PAGES;
 
 struct tm timeInfo = {};
@@ -149,18 +147,6 @@ bool sendDataWifi = false;
 bool sendDataLoRa = false;
 bool no_upload = false;
 bool useSDCard = false;
-
-int currentDay = 0;
-int lastDay = -1;
-unsigned long lastExecutionTime = 0;
-int seconds_to_wait = 0;
-
-unsigned long upButtonsMillis = 0;
-unsigned long previousMillis = 0;
-unsigned long previousMillis_long = 0;
-unsigned long previousMillis_upload = 0;
-const long interval = 1 * mS_TO_MIN_FACTOR;
-const long interval2 = 5 * mS_TO_MIN_FACTOR;
 
 double vs[101] = {0};
 
@@ -190,7 +176,7 @@ void initBoard()
 
    delay(1000); // for debugging in screen
 
-   Serial.setTxTimeoutMs(5); // set USB CDC Time TX
+   //Serial.setTxTimeoutMs(5); // set USB CDC Time TX // not relevant anymore ?!?
    Serial.begin(115200);     // start Serial for debuging
 
    spi = new SPIClass(HSPI);
@@ -297,18 +283,59 @@ void GPIO_wake_up()
    }
 }
 
-void initDisplay()
+void checkButton()
 {
-      tft = new Adafruit_ST7735(spi, TFT_CS, TFT_DC, TFT_RST);
-      tft->setSPISpeed(1000000);
+   // is auto timeout portal running
+   if (portalRunning)
+   {
+      wifiManager.process();
+   }
 
-      // ----- Initiate the TFT display and Start Image----- //
-      tft->initR(INITR_GREENTAB); // work around to set protected offset values
-      tft->initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
+   // is configuration portal requested?
+   if (digitalRead(LEFT_BUTTON_PIN) == LOW)
+   {
+      delay(50);
+      if (digitalRead(LEFT_BUTTON_PIN) == LOW)
+      {
+         if (!portalRunning)
+         {
+            Serial.println("Button Pressed, Starting Portal");
+            WiFi.mode(WIFI_STA);
+            wifiManager.startWebPortal();
+            portalRunning = true;
+         }
+         else
+         {
+            Serial.println("Button Pressed, Stopping Portal");
+            wifiManager.stopWebPortal();
+            portalRunning = false;
+         }
+      }
+   }
+}
 
-      tft->cp437(true);
-      tft->setCursor(0, 0);
-      tft->setRotation(3);
+void startBlinking()
+{
+   // Store initial state of LED
+   initialState = digitalRead(LED);
+
+   // Start Timer
+   blinker.attach(1.0, toggleLED);
+}
+
+void stopBlinking()
+{
+   // Stop Timer
+   blinker.detach();
+
+   // Restore initial state of LED
+   digitalWrite(LED, initialState);
+}
+
+void toggleLED()
+{
+   digitalWrite(LED, ledState);
+   ledState = !ledState;
 }
 
 void initVoltsArray()

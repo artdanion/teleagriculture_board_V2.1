@@ -85,8 +85,6 @@ extern uint8_t app_key[16];
 #define LORA_RST 17
 #define LORA_DI0 18
 #define LORA_DI1 14 // on teleAgriCulture Board V2.0 it has to be briged to the LORA Module Connector!
-#define UNUSED_PIN 0xFF
-#define LORA_PIN_RXTX UNUSED_PIN
 
 #define ONEWIRE_1 39
 #define ONEWIRE_2 40

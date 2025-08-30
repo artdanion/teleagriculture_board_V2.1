@@ -1,6 +1,14 @@
 #include <Arduino.h>
 #include <lora_functions.h>
 
+#include <driver/rtc_io.h>
+#include <lmic.h>
+#include <hal/hal.h>
+#include <LoraMessage.h>
+
+const unsigned TX_INTERVAL = 30U;
+bool loraJoinFailed = false;
+bool loraDataTransmitted = false;
 
 // Lora functions
 void os_getArtEui(u1_t *buf)
@@ -113,6 +121,7 @@ void lora_sendData(void)
                break;
             case TDSv:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -120,6 +129,7 @@ void lora_sendData(void)
                break;
             case MOIS:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -127,6 +137,7 @@ void lora_sendData(void)
                break;
             case LUX:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -134,6 +145,7 @@ void lora_sendData(void)
                break;
             case AMBIENT:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -141,6 +153,7 @@ void lora_sendData(void)
                break;
             case H2v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -148,6 +161,7 @@ void lora_sendData(void)
                break;
             case COv:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -155,6 +169,7 @@ void lora_sendData(void)
                break;
             case CO2v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -162,6 +177,7 @@ void lora_sendData(void)
                break;
             case NO2v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -169,6 +185,7 @@ void lora_sendData(void)
                break;
             case NH3v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -176,6 +193,7 @@ void lora_sendData(void)
                break;
             case C4H10v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -183,6 +201,7 @@ void lora_sendData(void)
                break;
             case C3H8v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -190,6 +209,7 @@ void lora_sendData(void)
                break;
             case CH4v:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -197,6 +217,7 @@ void lora_sendData(void)
                break;
             case C2H5OHv:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -204,6 +225,7 @@ void lora_sendData(void)
                break;
             case ALTITUDE:
                message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
                Serial.print(" Value: ");
@@ -249,7 +271,6 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
-
             case DEPTH:
                message.addRawFloat(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                Serial.print(sensorVector[i].measurements[j].data_name);
@@ -258,7 +279,6 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
-
             case UV_I:
                message.addTemperature(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                Serial.print(sensorVector[i].measurements[j].data_name);
@@ -267,7 +287,6 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
-            
             case ANGLE:
                message.addTemperature(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                Serial.print(sensorVector[i].measurements[j].data_name);
@@ -276,9 +295,8 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
-
             case KOHM:
-               message.addUint16(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               message.addRawFloat(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                Serial.print(sensorVector[i].measurements[j].data_name);
                Serial.print(": #");
                Serial.print(k);
@@ -498,7 +516,12 @@ void do_send(LoraMessage &message)
    {
       // Prepare upstream data transmission at the next possible time.
       LMIC_setTxData2(1, message.getBytes(), message.getLength(), 0);
-      // Serial.println(F("Packet queued\n"));
+#if DEBUG
+      Serial.println(F("Packet queued"));
+      Serial.print(F("Packet length: "));
+      Serial.println(message.getLength());
+      Serial.println();
+#endif
    }
 }
 
@@ -670,4 +693,3 @@ void loadLORA_State()
    delay(200);
    Serial.println("LMIC configuration reloaded from RTC Memory.");
 }
-

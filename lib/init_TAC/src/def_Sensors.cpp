@@ -38,7 +38,7 @@ ValueOrder getValueOrderFromString(String str)
 {
   if (str == "VOLT")
     return VOLT;
-  if (str == "TEMP")
+  if (str == "TEMPERATURE")
     return TEMP;
   if (str == "HUMIDITY")
     return HUMIDITY;
@@ -108,7 +108,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20.3,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -127,8 +127,8 @@ const char *proto_sensors = R"([
     ],
     "addr_num": 2,
     "possible_i2c_add": {
-      "default": "0x77",
-      "alt_1": "0x76"
+      "default": "0x76",
+      "alt_1": "0x77"
     }
   },
   {
@@ -224,7 +224,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -244,7 +244,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       }
@@ -344,9 +344,9 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
-        "data_name": "Temp"
+        "data_name": "temp"
       }
     ],
     "addr_num": 1,
@@ -410,7 +410,7 @@ const char *proto_sensors = R"([
       },
       {
         "value": 20.3,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -534,7 +534,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 0.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       }
@@ -562,7 +562,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -582,9 +582,9 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
-        "data_name": "Temp"
+        "data_name": "temp"
       },
       {
         "value": 40.2,
@@ -644,7 +644,7 @@ const char *proto_sensors = R"([
     "measurements": [
       {
         "value": 20.5,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },

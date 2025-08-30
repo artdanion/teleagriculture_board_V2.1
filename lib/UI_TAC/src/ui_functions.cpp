@@ -1,9 +1,33 @@
 #include <Arduino.h>
 #include <ui_functions.h>
 #include <init_Board.h>
+#include <time_functions.h>
+#include <lora_functions.h>
 #include <board_credentials.h>
-#include <RTClib.h>
-#include <time.h>
+#include <Fonts/FreeSans9pt7b.h>
+
+
+void initDisplay()
+{
+      tft = new Adafruit_ST7735(spi, TFT_CS, TFT_DC, TFT_RST);
+      tft->setSPISpeed(1000000);
+
+      // ----- Initiate the TFT display and Start Image----- //
+      tft->initR(INITR_GREENTAB); // work around to set protected offset values
+      tft->initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
+
+      tft->cp437(true);
+      tft->setCursor(0, 0);
+      tft->setRotation(3);
+}
+
+void initDisplayIfNeeded()
+{
+   if (useDisplay || forceConfig)
+   {
+      initDisplay();
+   }
+}
 
 void renderPage(int page)
 {
@@ -311,6 +335,7 @@ int countMeasurements(const std::vector<Sensor> &sensors)
 void measurementsPage(int page)
 {
    tft->fillScreen(ST7735_BLACK);
+   tft->setFont();
    tft->setTextSize(2);
    tft->setCursor(10, 10);
    tft->setTextColor(ST7735_WHITE);
@@ -348,16 +373,26 @@ void measurementsPage(int page)
 
       tft->print(" ");
 
-      if (!(show_measurements[i].unit == "°C"))
+      // handle °C and kΩ separately
+      if (show_measurements[i].unit == "°C")
       {
-         tft->print(show_measurements[i].unit);
-      }
-      else
-      {
+         // draw ° symbol
          tft->drawChar(tft->getCursorX(), tft->getCursorY(), 0xF8, ST7735_YELLOW, ST7735_BLACK, 1);
          tft->setCursor(tft->getCursorX() + 7, tft->getCursorY());
          tft->print("C");
       }
+      else if (show_measurements[i].unit == "kΩ")
+      {
+         tft->print("k");
+         // draw Ω symbol
+         tft->drawChar(tft->getCursorX(), tft->getCursorY(), 0xEA, ST7735_YELLOW, ST7735_BLACK, 1);
+      }
+      else
+      {
+         // all other units normal
+         tft->print(show_measurements[i].unit);
+      }
+
       cursor_y += 10;
    }
 }
@@ -446,37 +481,6 @@ void printDigits(int digits)
    tft->print(digits);
 }
 
-int seconds_to_next_hour()
-{
-   struct tm timeInfo;
-   getLocalTime(&timeInfo);
-
-   // time_t now = time(NULL);
-   // struct tm *tm_now = localtime(&now);
-   int seconds = (60 - timeInfo.tm_sec) + (59 - timeInfo.tm_min) * 60;
-   return seconds;
-}
-
-void setUploadTime()
-{
-   getLocalTime(&timeInfo);
-
-   lastUpload = "";
-
-   if (timeInfo.tm_hour < 10)
-      lastUpload += '0';
-   lastUpload += String(timeInfo.tm_hour) + ':';
-
-   if (timeInfo.tm_min < 10)
-      lastUpload += '0';
-   lastUpload += String(timeInfo.tm_min) + ':';
-
-   if (timeInfo.tm_sec < 10)
-      lastUpload += '0';
-
-   lastUpload += String(timeInfo.tm_sec);
-}
-
 void drawBattery(int x, int y)
 {
    int bat = getBatteryChargeLevel();
@@ -512,4 +516,3 @@ void drawBattery(int x, int y)
    tft->print(bat);
    tft->print(" %");
 }
-

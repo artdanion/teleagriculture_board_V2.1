@@ -2,6 +2,7 @@
 #include "board_credentials.h"
 #include <init_Board.h>
 #include <debug_functions.h>
+#include <time_functions.h>
 
 #include <ArduinoJson.h>
 
@@ -11,13 +12,47 @@ void SD_sendData()
 {
    DynamicJsonDocument docMeasures(2000);
 
+   // Add timestamp
+   String timestamp;
+   if (rtcEnabled && rtc.begin())
+   {
+      DateTime now = rtc.now();
+      char buffer[25];
+      sprintf(buffer, "%04d-%02d-%02d %02d:%02d:%02d",
+              now.year(), now.month(), now.day(),
+              now.hour(), now.minute(), now.second());
+      timestamp = String(buffer);
+   }
+   else
+   {
+      // Use system time (if available) or millis() as fallback
+      time_t now = time(nullptr);
+      if (now > 0)
+      {
+         struct tm *timeinfo = localtime(&now);
+         char buffer[25];
+         sprintf(buffer, "%04d-%02d-%02d %02d:%02d:%02d",
+                 timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
+                 timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+         timestamp = String(buffer);
+      }
+      else
+      {
+         timestamp = String(millis()); // fallback to millis if time() not available
+      }
+   }
+
+   docMeasures["timestamp"] = timestamp;
+
+   // Collect sensor data
    for (int i = 0; i < sensorVector.size(); ++i)
    {
       for (int j = 0; j < sensorVector[i].returnCount; j++)
       {
          if (!isnan(sensorVector[i].measurements[j].value))
          {
-            docMeasures[sensorVector[i].measurements[j].data_name] = static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0);
+            docMeasures[sensorVector[i].measurements[j].data_name] =
+                static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0);
          }
       }
    }
@@ -26,24 +61,23 @@ void SD_sendData()
    serializeJson(docMeasures, output);
 
    // Ensure the output is not empty
-   if (output.length() > 2) // The minimum valid JSON object would be "{}" which is 2 characters
+   if (output.length() > 2) // "{}" is 2 chars
    {
-      String path = "/Teleagriculture_SensorKit_id_" + String(boardID); // File path
+      String path = "/Teleagriculture_SensorKit_id_" + String(boardID);
       File dataFile;
 
-      // Check if the file exists
       if (SD.exists(path.c_str()))
       {
-         dataFile = SD.open(path.c_str(), FILE_APPEND); // Open in append mode
+         dataFile = SD.open(path.c_str(), FILE_APPEND);
       }
       else
       {
-         dataFile = SD.open(path.c_str(), FILE_WRITE); // Create a new file
+         dataFile = SD.open(path.c_str(), FILE_WRITE);
       }
 
       if (dataFile)
       {
-         dataFile.println(output); // Append the JSON data as a new line
+         dataFile.println(output);
          dataFile.close();
          Serial.println("Data written to SD card: " + output);
       }
@@ -153,6 +187,7 @@ void load_Sensors()
    }
    Serial.printf("JSON verwendet %zu von %zu Bytes\n",
                  doc.memoryUsage(), doc.capacity());
+   Serial.println();
 
    DynamicJsonDocument deallocate(doc);
 }

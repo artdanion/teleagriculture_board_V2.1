@@ -246,7 +246,7 @@
 
 <body class='invert'>
     <div class='wrap'>
-        <h2>Board Setup</h2>Firmware Version 1.30<BR><BR>Board MAC Address: 34:85:18:89:07:60<BR><BR><iframe
+        <h2>Board Setup</h2>Firmware Version 1.51<BR><BR>Board MAC Address: 34:85:18:89:07:60<BR><BR><iframe
             name='dummyframe' id='dummyframe' style='display: none;'></iframe>
         <div>
             <form action='/save-tz' target='dummyframe' method='POST'>
@@ -273,20 +273,20 @@
         </div><BR>
         <div><BR><b>WiFi Upload Data</b>
             <div><label for='BoardID'>Board ID:</label><input type='text' id='BoardID' name='BoardID'
-                    pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=1014 required><label
+                    pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=1000 required><label
                     for='API_KEY'>API KEY:</label><input type='text' name='API_KEY' pattern='^[A-Za-z0-9]{32}$'
-                    title=' Enter Bearer token' value=fkYauyaxirkYjSKrzR8lzKuVnak4l2nV required>
+                    title=' Enter Bearer token' value=xxxxxxxxxxxxxxxxxxxxx required>
                 <div id='Lora' style='display:none'><br><BR><b>LoRa TTN Data</b><BR><strong>EU 868
                         MHz</strong><BR><BR><label for='OTAA_APPEUI'>OTAA_APPEUI:</label><input type='text'
                         id='OTAA_APPEUI' name='OTAA_APPEUI' pattern='^[0-9A-F]{16}$'
                         title='Enter 8 hexadecimal digits without any prefix or separator' value=0000000000000000
                         required><label for='OTAA_DEVEUI'>OTAA_DEVEUI:</label><input type='text' id='OTAA_DEVEUI'
                         name='OTAA_DEVEUI' pattern='^[0-9A-F]{16}$'
-                        title='Enter 8 hexadecimal digits without any prefix or separator' value=70B3D57ED005D967
+                        title='Enter 8 hexadecimal digits without any prefix or separator' value=0000000000000000
                         required><label for='OTAA_APPKEY'>OTAA_APPKEY:</label><input type='text' id='OTAA_APPKEY'
                         name='OTAA_APPKEY' pattern='^[0-9A-F]{32}$'
                         title='Enter 16 hexadecimal digits without any prefix or separator'
-                        value=EDA96CD96FC5A6C31CCC77D65284C6A4 required><BR><input type='checkbox' id='ADR' name='ADR'
+                        value=0000000000000000 required><BR><input type='checkbox' id='ADR' name='ADR'
                         value='1' /><label for='ADR'> use ADR</label></div><BR>
                 <div id='GSM' style='display:none'><br><BR><b>GSM Data</b><label for='apn'>APN:</label><input
                         type='text' id='apn' name='apn' value=0000 required><label for='gprs_user'>GPRS
@@ -296,21 +296,24 @@
                 <h3 style='text-align:center;'>I2C Scan</h3>
                 <table border='1' style='border-collapse:collapse; width:100%; text-align:center;'>
                     <tr>
+                        <td>0x23</td>
                         <td>0x50</td>
                         <td>0x51</td>
                         <td>0x52</td>
                         <td>0x53</td>
                         <td>0x54</td>
-                        <td>0x55</td>
                     </tr>
                     <tr>
+                        <td>0x55</td>
                         <td>0x56</td>
                         <td>0x57</td>
                         <td>0x68</td>
                         <td>0x76</td>
+                        <td>0x77</td>
                     </tr>
+                    <tr></tr>
                 </table>
-                <p style='text-align:center; font-weight:bold; margin-top:8px;'>10 I2C addresses found</p><BR>
+                <p style='text-align:center; font-weight:bold; margin-top:8px;'>12 I2C addresses found</p><BR>
                 <h2>Connectors:</h2>
                 <table style='width:100%'>
                     <tbody>
@@ -323,7 +326,7 @@
                             <td><label for='i2c_1'>I2C_1</label><select id='i2c_1' name='i2c_1'
                                     onchange='updateAddrSelect(this, "i2c_1_addr")'>
                                     <option value='-1'>NO</option>
-                                    <option value='0' data-addrs='0x77,0x76' selected>BMP_280</option>
+                                    <option value='0' data-addrs='0x76,0x77' selected>BMP_280</option>
                                     <option value='1' data-addrs='0x78,0x77'>Level</option>
                                     <option value='2' data-addrs='0x10'>VELM7700</option>
                                     <option value='10' data-addrs='0x68'>RTCDS3231</option>
@@ -333,11 +336,27 @@
                                     <option value='24' data-addrs='0x23,0x5C'>BH_1750</option>
                                     <option value='25' data-addrs='0x40'>SHT_21</option>
                                 </select><br><label for='i2c_1_addr'>I2C Addr</label><select id='i2c_1_addr'
-                                    name='i2c_1_addr'></select></td>
+                                    name='i2c_1_addr' data-selected-addr='0'></select></td>
                             <td><label for='i2c_3'>I2C_3</label><select id='i2c_3' name='i2c_3'
                                     onchange='updateAddrSelect(this, "i2c_3_addr")'>
                                     <option value='-1'>NO</option>
-                                    <option value='0' data-addrs='0x77,0x76'>BMP_280</option>
+                                    <option value='0' data-addrs='0x76,0x77'>BMP_280</option>
+                                    <option value='1' data-addrs='0x78,0x77'>Level</option>
+                                    <option value='2' data-addrs='0x10'>VELM7700</option>
+                                    <option value='10' data-addrs='0x68'>RTCDS3231</option>
+                                    <option value='14' data-addrs='0x77,0x76'>BME_280</option>
+                                    <option value='15' data-addrs='0x48,0x49'>ADS1115</option>
+                                    <option value='23' data-addrs='0x77,0x76' selected>BMP_680</option>
+                                    <option value='24' data-addrs='0x23,0x5C'>BH_1750</option>
+                                    <option value='25' data-addrs='0x40'>SHT_21</option>
+                                </select><br><label for='i2c_3_addr'>I2C Addr</label><select id='i2c_3_addr'
+                                    name='i2c_3_addr' data-selected-addr='0'></select></td>
+                        </tr>
+                        <tr>
+                            <td><label for='i2c_2'>I2C_2</label><select id='i2c_2' name='i2c_2'
+                                    onchange='updateAddrSelect(this, "i2c_2_addr")'>
+                                    <option value='-1'>NO</option>
+                                    <option value='0' data-addrs='0x76,0x77'>BMP_280</option>
                                     <option value='1' data-addrs='0x78,0x77'>Level</option>
                                     <option value='2' data-addrs='0x10'>VELM7700</option>
                                     <option value='10' data-addrs='0x68' selected>RTCDS3231</option>
@@ -346,38 +365,22 @@
                                     <option value='23' data-addrs='0x77,0x76'>BMP_680</option>
                                     <option value='24' data-addrs='0x23,0x5C'>BH_1750</option>
                                     <option value='25' data-addrs='0x40'>SHT_21</option>
-                                </select><br><label for='i2c_3_addr'>I2C Addr</label><select id='i2c_3_addr'
-                                    name='i2c_3_addr'></select></td>
-                        </tr>
-                        <tr>
-                            <td><label for='i2c_2'>I2C_2</label><select id='i2c_2' name='i2c_2'
-                                    onchange='updateAddrSelect(this, "i2c_2_addr")'>
-                                    <option value='-1' selected>NO</option>
-                                    <option value='0' data-addrs='0x77,0x76'>BMP_280</option>
-                                    <option value='1' data-addrs='0x78,0x77'>Level</option>
-                                    <option value='2' data-addrs='0x10'>VELM7700</option>
-                                    <option value='10' data-addrs='0x68'>RTCDS3231</option>
-                                    <option value='14' data-addrs='0x77,0x76'>BME_280</option>
-                                    <option value='15' data-addrs='0x48,0x49'>ADS1115</option>
-                                    <option value='23' data-addrs='0x77,0x76'>BMP_680</option>
-                                    <option value='24' data-addrs='0x23,0x5C'>BH_1750</option>
-                                    <option value='25' data-addrs='0x40'>SHT_21</option>
                                 </select><br><label for='i2c_2_addr'>I2C Addr</label><select id='i2c_2_addr'
-                                    name='i2c_2_addr'></select></td>
+                                    name='i2c_2_addr' data-selected-addr='0'></select></td>
                             <td><label for='i2c_4'>I2C_4</label><select id='i2c_4' name='i2c_4'
                                     onchange='updateAddrSelect(this, "i2c_4_addr")'>
-                                    <option value='-1' selected>NO</option>
-                                    <option value='0' data-addrs='0x77,0x76'>BMP_280</option>
+                                    <option value='-1'>NO</option>
+                                    <option value='0' data-addrs='0x76,0x77'>BMP_280</option>
                                     <option value='1' data-addrs='0x78,0x77'>Level</option>
                                     <option value='2' data-addrs='0x10'>VELM7700</option>
                                     <option value='10' data-addrs='0x68'>RTCDS3231</option>
                                     <option value='14' data-addrs='0x77,0x76'>BME_280</option>
                                     <option value='15' data-addrs='0x48,0x49'>ADS1115</option>
                                     <option value='23' data-addrs='0x77,0x76'>BMP_680</option>
-                                    <option value='24' data-addrs='0x23,0x5C'>BH_1750</option>
+                                    <option value='24' data-addrs='0x23,0x5C' selected>BH_1750</option>
                                     <option value='25' data-addrs='0x40'>SHT_21</option>
                                 </select><br><label for='i2c_4_addr'>I2C Addr</label><select id='i2c_4_addr'
-                                    name='i2c_4_addr'></select></td>
+                                    name='i2c_4_addr' data-selected-addr='0'></select></td>
                         </tr>
                     </tbody>
                 </table>
@@ -462,11 +465,11 @@
                         <option value='-1' selected>NO</option>
                         <option value='8' data-addrs='0x08,0x55'>MultiGasV2</option>
                         <option value='9' data-addrs='0x04,0x19'>MultiGasV1</option>
-                    </select><br><label for='I2C_5V_addr'>I2C Addr</label><select id='I2C_5V_addr'
-                        name='I2C_5V_addr'></select></td>
+                    </select><br><label for='I2C_5V_addr'>I2C Addr</label><select id='I2C_5V_addr' name='I2C_5V_addr'
+                        data-selected-addr='-1'></select></td>
                 </table><BR><BR>
                 <h2>Time Settings</h2><label for='ntp-server'>System Time <input readonly style=width:auto
-                        name='system-time' type='datetime-local' value='2025-08-26T01:11'> <button
+                        name='system-time' type='datetime-local' value='2025-08-28T15:55'> <button
                         onclick=location.reload() style=width:auto type=button> Refresh </button></label><br><label
                     for='timezone'>Time Zone</label><select id='timezone' name='timezone'>
                     <option value='0'>Africa/Abidjan</option>
@@ -932,7 +935,7 @@
                     <option value='920'>Pacific/Wallis</option>
                 </select><br>
                 <div id='no_NTP'><label for='set-time'>Set Time <input style=width:auto name='set-time' id='set-time'
-                            type='datetime-local' value='2025-08-26T01:11'></div>
+                            type='datetime-local' value='2025-08-28T15:55'></div>
                 <div id='use_NTP'><label for='use-ntp-server'>Enable NTP Client</label> <input value='1' type='checkbox'
                         name='use-ntp-server' id='use-ntp-server' onchange='chooseNTP()'><br>
                     <div id='ntp_Settings' style='display:none;'>

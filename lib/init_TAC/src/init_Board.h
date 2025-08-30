@@ -11,10 +11,6 @@
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 
-#include "driver/timer.h"
-#include <sys/time.h>
-#include <time.h>
-
 #include <ArduinoJson.h>
 
 #include <Wire.h>
@@ -23,16 +19,10 @@
 #include <driver/spi_master.h>
 #include <SD.h>
 
-#include <lmic.h>
-#include <hal/hal.h>
-#include <LoraMessage.h>
-
 #include <FS.h>
 #include "SPIFFS.h"
 #include <vector>
 #include <WString.h>
-
-#include <driver/rtc_io.h>
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -78,34 +68,6 @@
 #define NUM_PAGES 4
 #define NUM_PERPAGE 9
 
-// ------------------- RTC Persistente Variablen -------------------
-extern RTC_DATA_ATTR int bootCount;
-extern RTC_DATA_ATTR bool loraJoined;
-
-extern RTC_DATA_ATTR u4_t RTC_LORAWAN_netid;
-extern RTC_DATA_ATTR devaddr_t RTC_LORAWAN_devaddr;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_nwkKey[16];
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_artKey[16];
-extern RTC_DATA_ATTR u4_t RTC_LORAWAN_seqnoUp;
-extern RTC_DATA_ATTR u4_t RTC_LORAWAN_seqnoDn;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_dn2Dr;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_dnConf;
-extern RTC_DATA_ATTR s1_t RTC_LORAWAN_adrTxPow;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_txChnl;
-extern RTC_DATA_ATTR s1_t RTC_LORAWAN_datarate;
-extern RTC_DATA_ATTR u2_t RTC_LORAWAN_channelMap;
-extern RTC_DATA_ATTR s2_t RTC_LORAWAN_adrAckReq;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_rx1DrOffset;
-extern RTC_DATA_ATTR u1_t RTC_LORAWAN_rxDelay;
-
-#if (CFG_eu868)
-extern RTC_DATA_ATTR u4_t RTC_LORAWAN_channelFreq[MAX_CHANNELS];
-extern RTC_DATA_ATTR u2_t RTC_LORAWAN_channelDrMap[MAX_CHANNELS];
-extern RTC_DATA_ATTR u4_t RTC_LORAWAN_channelDlFreq[MAX_CHANNELS];
-extern RTC_DATA_ATTR band_t RTC_LORAWAN_bands[MAX_BANDS];
-#endif
-
-extern RTC_DATA_ATTR lmic_t RTC_LMIC;
 
 // ------------------- Zertifikate -------------------
 extern const uint8_t x509_crt_bundle_start[] asm("_binary_src_x509_crt_bundle_start");
@@ -139,10 +101,6 @@ extern Button downButton;
 extern int backlight_pwm;
 extern bool displayRefresh;
 
-extern const unsigned TX_INTERVAL;
-extern bool loraJoinFailed;
-extern bool loraDataTransmitted;
-
 extern bool portalRunning;
 extern bool _enteredConfigMode;
 extern bool connectorsSaved;
@@ -150,12 +108,9 @@ extern bool configSaved;
 extern int total_measurement_pages;
 extern int currentPage;
 extern int lastPage;
-extern time_t prevDisplay;
 extern int num_pages;
 
-extern struct tm timeInfo;
-extern uint32_t userUTCTime;
-extern String lastUpload;
+
 extern bool initialState;
 extern bool ledState;
 extern bool gotoSleep;
@@ -168,18 +123,6 @@ extern bool sendDataLoRa;
 extern bool no_upload;
 extern bool useSDCard;
 
-extern int currentDay;
-extern int lastDay;
-extern unsigned long lastExecutionTime;
-extern int seconds_to_wait;
-
-extern unsigned long upButtonsMillis;
-extern unsigned long previousMillis;
-extern unsigned long previousMillis_long;
-extern unsigned long previousMillis_upload;
-extern const long interval;
-extern const long interval2;
-
 extern double vs[101];
 
 // ------------------- Funktionen -------------------
@@ -188,7 +131,10 @@ void initBoard();
 void doubleReset_wakeup_reason();
 void GPIO_wake_up();
 
-void initDisplay();
+void checkButton(void);
+void toggleLED(void);
+void startBlinking(void);
+void stopBlinking(void);
 
 void initVoltsArray();            //   Copyright (c) 2019 Pangodream   	https://github.com/pangodream/18650CL
 int getBatteryChargeLevel();      //   Copyright (c) 2019 Pangodream   	https://github.com/pangodream/18650CL

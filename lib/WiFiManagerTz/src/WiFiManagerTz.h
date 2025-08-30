@@ -8,8 +8,7 @@ Listing directory: /
   FILE: connectors.json SIZE: 174
   FILE: board_config.json       SIZE: 554
 
-values:
-
+board_config.json:
 BoardID: 1000
 useBattery: 0
 useDisplay: 1
@@ -29,6 +28,19 @@ lora_ADR: 0
 apn: 0000
 gprs_user: XXXXX
 gprs_pass: XXXXX
+
+upload_interval: 60
+system-time: 1970-01-01T01:07
+timezone: 810
+set-time: 2023-04-01T09:45
+use-ntp-server: 1
+enable-dst: 1
+custom_ntp_enable: 1
+custom_ntp: 129.6.15.28
+ntp-server: 3
+ntp-server-interval: 60
+
+connectors.json:
 i2c_1: -1
 i2c_3: -1
 i2c_2: -1
@@ -40,16 +52,7 @@ adc_2: -1
 onewire_2: -1
 adc_3: -1
 onewire_3: 7
-upload_interval: 60
-system-time: 1970-01-01T01:07
-timezone: 810
-set-time: 2023-04-01T09:45
-use-ntp-server: 1
-enable-dst: 1
-custom_ntp_enable: 1
-custom_ntp: 129.6.15.28
-ntp-server: 3
-ntp-server-interval: 60
+
 */
 
 #pragma once
@@ -58,13 +61,12 @@ ntp-server-interval: 60
 #include "NTP.hpp"
 #include "TZ.hpp"
 #include <servers.h>
-#include <RTClib.h>
+#include <time_functions.h>
 
 #define MAX_FOUND_I2C 16
 
 void save_Connectors();
 void save_Config();
-void setEsp32Time(const char *timeStr);
 
 namespace WiFiManagerNS
 {
@@ -83,12 +85,28 @@ namespace WiFiManagerNS
 
   WiFiManager *_wifiManager;
 
+  String generateI2CTable();
   String generateDropdown(const String &con_typ, const int &conf, const String &formFieldName);
 
-  bool isFound(String addr);
+  void handleTimezoneSettings();
+  void handleBoardSettings();
+  void handleI2CSettings();
+  void handleADCSettings();
+  void handleOneWireSettings();
+  void handlePeripheralSettings();
+  void handleUploadSettings();
+  void handleLoraSettings();
+  void handleGPRSSettings();
+  void handleTimeSetting();
+
   void updateRtcStatus();
-  String generateI2CTable();
+
   void bindServerCallback();
+
+  bool isFound(String addr);
+  bool getBoolArg(const char *name);
+  int getIntArg(const char *name, int defaultValue = 0);
+  String getStringArg(const char *name, const String &defaultValue = "");
 
   void init(WiFiManager *manager)
   {
@@ -276,9 +294,19 @@ namespace WiFiManagerNS
 
     TimeConfHTML += "<div><form action='/save-tz' target='dummyframe' method='POST'><legend>Please select your data upload method:</legend>";
     TimeConfHTML += "<table style='width:100%'><tr>";
-    TimeConfHTML += "<td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()' checked /><label for='upload1'> WiFi</label></td>";
-    TimeConfHTML += "<td><input type='radio' id='loracheck' name='upload' value='LORA' onchange='chooseUploade()' /><label for='upload2'> LoRa</label></td>";
-    TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' /><label for='upload3'> NO upload</label></td>";
+
+    TimeConfHTML += "<td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()' ";
+    TimeConfHTML += (upload == "WIFI") ? "checked " : "";
+    TimeConfHTML += "/><label for='upload1'> WiFi</label></td>";
+
+    TimeConfHTML += "<td><input type='radio' id='loracheck' name='upload' value='LORA' onchange='chooseUploade()' ";
+    TimeConfHTML += (upload == "LORA") ? "checked " : "";
+    TimeConfHTML += "/><label for='upload2'> LoRa</label></td>";
+
+    TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' ";
+    TimeConfHTML += (upload == "NO") ? "checked " : "";
+    TimeConfHTML += "/><label for='upload3'> NO upload</label></td>";
+    
     // TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
     TimeConfHTML += "</tr></table><br>";
 
@@ -508,27 +536,6 @@ namespace WiFiManagerNS
       NTP::NTP_Servers.push_back(newServer);
     }
 
-    if (_wifiManager->server->hasArg("timezone"))
-    {
-      String timezoneStr = _wifiManager->server->arg("timezone");
-      log_d("timezoneStr: %s", timezoneStr.c_str());
-      size_t tzidx = atoi(timezoneStr.c_str());
-      String timezone = TZ::defaultTzName;
-      if (tzidx < TZ::zones())
-      {
-        timezone = String(TZ::timezones[tzidx]);
-        log_d("timezone: %s", timezone.c_str());
-      }
-
-      TZ::setTzName(timezone.c_str());
-      const char *tz = TZ::getTzByLocation(TZ::tzName);
-      String tempServer = NTP::server();
-      char char_array[tempServer.length() + 1];
-      tempServer.toCharArray(char_array, tempServer.length() + 1);
-      TZ::configTimeWithTz(tz, char_array);
-      timeZone = tz;
-    }
-
     if (NTPEnabled)
     {
       // also collect tz/server data
@@ -568,228 +575,18 @@ namespace WiFiManagerNS
       }
     }
 
-    if (_wifiManager->server->hasArg("BoardID"))
-    {
-      boardID = atoi(_wifiManager->server->arg("BoardID").c_str());
-    }
-
-    /***************************************CONNECTORS**************************************************** */
-
-    if (_wifiManager->server->hasArg("i2c_1"))
-    {
-      I2C_con_table[0].sensorIndex = atoi(_wifiManager->server->arg("i2c_1").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("i2c_1_addr"))
-    {
-      I2C_con_table[0].addrIndex = atoi(_wifiManager->server->arg("i2c_1_addr").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("i2c_2"))
-    {
-      I2C_con_table[1].sensorIndex = atoi(_wifiManager->server->arg("i2c_2").c_str());
-    }
-    if (_wifiManager->server->hasArg("i2c_2_addr"))
-    {
-      I2C_con_table[1].addrIndex = atoi(_wifiManager->server->arg("i2c_2_addr").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("i2c_3"))
-    {
-      I2C_con_table[2].sensorIndex = atoi(_wifiManager->server->arg("i2c_3").c_str());
-    }
-    if (_wifiManager->server->hasArg("i2c_3_addr"))
-    {
-      I2C_con_table[2].addrIndex = atoi(_wifiManager->server->arg("i2c_3_addr").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("i2c_4"))
-    {
-      I2C_con_table[3].sensorIndex = atoi(_wifiManager->server->arg("i2c_4").c_str());
-    }
-    if (_wifiManager->server->hasArg("i2c_4_addr"))
-    {
-      I2C_con_table[3].addrIndex = atoi(_wifiManager->server->arg("i2c_4_addr").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("I2C_5V"))
-    {
-      I2C_5V_con_table[0].sensorIndex = atoi(_wifiManager->server->arg("I2C_5V").c_str());
-    }
-    if (_wifiManager->server->hasArg("I2C_5V_addr"))
-    {
-      I2C_5V_con_table[0].addrIndex = atoi(_wifiManager->server->arg("I2C_5V_addr").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("adc_1"))
-    {
-      ADC_con_table[0] = atoi(_wifiManager->server->arg("adc_1").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("adc_2"))
-    {
-      ADC_con_table[1] = atoi(_wifiManager->server->arg("adc_2").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("adc_3"))
-    {
-      ADC_con_table[2] = atoi(_wifiManager->server->arg("adc_3").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("onewire_1"))
-    {
-      OneWire_con_table[0] = atoi(_wifiManager->server->arg("onewire_1").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("onewire_2"))
-    {
-      OneWire_con_table[1] = atoi(_wifiManager->server->arg("onewire_2").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("onewire_3"))
-    {
-      OneWire_con_table[2] = atoi(_wifiManager->server->arg("onewire_3").c_str());
-    }
-
-    if (_wifiManager->server->hasArg("battery"))
-    {
-      uint8_t useB = atoi((_wifiManager->server->arg("battery")).c_str());
-      useBattery = useB == 1;
-    }
-    else
-    {
-      useBattery = false;
-    }
-
-    if (_wifiManager->server->hasArg("display"))
-    {
-      uint8_t useD = atoi((_wifiManager->server->arg("display")).c_str());
-      useDisplay = useD == 1;
-    }
-    else
-    {
-      useDisplay = false;
-    }
-
-    if (_wifiManager->server->hasArg("logtosd"))
-    {
-      uint8_t useL = atoi((_wifiManager->server->arg("logtosd")).c_str());
-      saveDataSDCard = useL == 1;
-    }
-    else
-    {
-      saveDataSDCard = false;
-    }
-
-    if (_wifiManager->server->hasArg("up_interval"))
-    {
-      String upInterval = _wifiManager->server->arg("up_interval");
-      upload_interval = atoi(upInterval.c_str());
-    }
-
-    if (_wifiManager->server->hasArg("upload"))
-    {
-      upload = _wifiManager->server->arg("upload").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("ADR"))
-    {
-      uint8_t use_ADR = atoi((_wifiManager->server->arg("ADR")).c_str());
-      lora_ADR = use_ADR == 1;
-    }
-    else
-    {
-      lora_ADR = false;
-    }
-
-    if (_wifiManager->server->hasArg("API_KEY"))
-    {
-      API_KEY = _wifiManager->server->arg("API_KEY").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("ANONYMUS"))
-    {
-      anonym = _wifiManager->server->arg("ANONYMUS").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("certificate"))
-    {
-      user_CA = _wifiManager->server->arg("certificate").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("apn"))
-    {
-      apn = _wifiManager->server->arg("apn").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("gprs_user"))
-    {
-      gprs_user = _wifiManager->server->arg("gprs_user").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("gprs_pass"))
-    {
-      gprs_pass = _wifiManager->server->arg("gprs_pass").c_str();
-    }
-
-    if (_wifiManager->server->hasArg("OTAA_DEVEUI"))
-    {
-      OTAA_DEVEUI = _wifiManager->server->arg("OTAA_DEVEUI").c_str();
-      loraChanged = true;
-    }
-
-    if (_wifiManager->server->hasArg("OTAA_APPEUI"))
-    {
-      OTAA_APPEUI = _wifiManager->server->arg("OTAA_APPEUI").c_str();
-      loraChanged = true;
-    }
-
-    if (_wifiManager->server->hasArg("OTAA_APPKEY"))
-    {
-      OTAA_APPKEY = _wifiManager->server->arg("OTAA_APPKEY").c_str();
-      loraChanged = true;
-    }
-
-    if (_wifiManager->server->hasArg("set-time"))
-    {
-      setTime_value = _wifiManager->server->arg("set-time").c_str();
-      if (!(upload == "WIFI"))
-      {
-        setEsp32Time(setTime_value.c_str());
-      }
-    }
+    handleTimezoneSettings();
+    handleBoardSettings();
+    handleI2CSettings();
+    handleADCSettings();
+    handleOneWireSettings();
+    handlePeripheralSettings();
+    handleUploadSettings();
+    handleLoraSettings();
+    handleGPRSSettings();
+    handleTimeSetting();
 
     updateRtcStatus();
-
-    if (rtcEnabled)
-    {
-      RTC_DS3231 rtc;
-
-      rtc.begin();
-      rtc.adjust(setTime_value.c_str());
-
-      Serial.println(setTime_value.c_str());
-
-      DateTime now = rtc.now();
-      if (now.year() < 2024)
-      {
-        Serial.println("RTC not set, set to compile time");
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-      }
-      Serial.print("Current RTC time: ");
-      Serial.print(now.year());
-      Serial.print("-");
-      Serial.print(now.month());
-      Serial.print("-");
-      Serial.print(now.day());
-      Serial.print(" ");
-      Serial.print(now.hour());
-      Serial.print(":");
-      Serial.print(now.minute());
-      Serial.print(":");
-      Serial.print(now.second());
-      Serial.println();
-    }
 
     SPI_con_table[0] = NO;
     EXTRA_con_table[0] = NO;
@@ -816,8 +613,144 @@ namespace WiFiManagerNS
     _wifiManager->server->on("/favicon.ico", handleFavicon); // changed to imbedded png/base64 link
   }
 
-  /*******************DropDown******************************************************************* */
+  // --- Settings Handlers ---
 
+  void handleTimezoneSettings()
+  {
+    if (!_wifiManager->server->hasArg("timezone"))
+      return;
+
+    String timezoneStr = getStringArg("timezone");
+    size_t tzidx = timezoneStr.toInt();
+    String timezone = TZ::defaultTzName;
+
+    if (tzidx < TZ::zones())
+    {
+      timezone = String(TZ::timezones[tzidx]);
+    }
+
+    TZ::setTzName(timezone.c_str());
+    const char *tz = TZ::getTzByLocation(TZ::tzName);
+
+    String tempServer = NTP::server();
+    std::vector<char> buf(tempServer.length() + 1);
+    tempServer.toCharArray(buf.data(), buf.size());
+
+    TZ::configTimeWithTz(tz, buf.data());
+    timeZone = tz;
+  }
+
+  void handleBoardSettings()
+  {
+    boardID = getIntArg("BoardID");
+  }
+
+  void handleI2CSettings()
+  {
+    for (int i = 0; i < 4; i++)
+    {
+      String base = "i2c_" + String(i + 1);
+      if (_wifiManager->server->hasArg(base))
+      {
+        I2C_con_table[i].sensorIndex = getIntArg(base.c_str());
+      }
+      if (_wifiManager->server->hasArg(base + "_addr"))
+      {
+        I2C_con_table[i].addrIndex = getIntArg((base + "_addr").c_str());
+      }
+    }
+
+    if (_wifiManager->server->hasArg("I2C_5V"))
+    {
+      I2C_5V_con_table[0].sensorIndex = getIntArg("I2C_5V");
+    }
+    if (_wifiManager->server->hasArg("I2C_5V_addr"))
+    {
+      I2C_5V_con_table[0].addrIndex = getIntArg("I2C_5V_addr");
+    }
+  }
+
+  void handleADCSettings()
+  {
+    for (int i = 0; i < 3; i++)
+    {
+      String arg = "adc_" + String(i + 1);
+      if (_wifiManager->server->hasArg(arg))
+      {
+        ADC_con_table[i] = getIntArg(arg.c_str());
+      }
+    }
+  }
+
+  void handleOneWireSettings()
+  {
+    for (int i = 0; i < 3; i++)
+    {
+      String arg = "onewire_" + String(i + 1);
+      if (_wifiManager->server->hasArg(arg))
+      {
+        OneWire_con_table[i] = getIntArg(arg.c_str());
+      }
+    }
+  }
+
+  void handlePeripheralSettings()
+  {
+    useBattery = getBoolArg("battery");
+    useDisplay = getBoolArg("display");
+    saveDataSDCard = getBoolArg("logtosd");
+  }
+
+  void handleUploadSettings()
+  {
+    if (_wifiManager->server->hasArg("up_interval"))
+    {
+      upload_interval = getIntArg("up_interval");
+    }
+    upload = getStringArg("upload", upload);
+  }
+
+  void handleLoraSettings()
+  {
+    lora_ADR = getBoolArg("ADR");
+
+    if (_wifiManager->server->hasArg("OTAA_DEVEUI"))
+    {
+      OTAA_DEVEUI = getStringArg("OTAA_DEVEUI").c_str();
+      loraChanged = true;
+    }
+    if (_wifiManager->server->hasArg("OTAA_APPEUI"))
+    {
+      OTAA_APPEUI = getStringArg("OTAA_APPEUI").c_str();
+      loraChanged = true;
+    }
+    if (_wifiManager->server->hasArg("OTAA_APPKEY"))
+    {
+      OTAA_APPKEY = getStringArg("OTAA_APPKEY").c_str();
+      loraChanged = true;
+    }
+  }
+
+  void handleGPRSSettings()
+  {
+    API_KEY = getStringArg("API_KEY").c_str();
+    anonym = getStringArg("ANONYMUS").c_str();
+    user_CA = getStringArg("certificate").c_str();
+    apn = getStringArg("apn").c_str();
+    gprs_user = getStringArg("gprs_user").c_str();
+    gprs_pass = getStringArg("gprs_pass").c_str();
+  }
+
+  void handleTimeSetting()
+  {
+    if (_wifiManager->server->hasArg("set-time"))
+    {
+      setTime_value = getStringArg("set-time").c_str();
+      setRTCfromConfigPortal(setTime_value.c_str(), timeZone.c_str());
+    }
+  }
+
+  /*******************DropDown******************************************************************* */
   String generateDropdown(const String &con_typ, const int &conf, const String &formFieldName)
   {
     String dropdown;
@@ -865,11 +798,25 @@ namespace WiFiManagerNS
 
     dropdown += "</select>";
 
-    // --- Adress CHoosen (filled by JS) ---
+    // --- Address CHoosen (filled by JS) ---
     if (con_typ == "I2C" || con_typ == "I2C_5V")
     {
       dropdown += "<br><label for='" + formFieldName + "_addr'>I2C Addr</label>";
-      dropdown += "<select id='" + formFieldName + "_addr' name='" + formFieldName + "_addr'></select>";
+
+      int savedAddrIndex = -1;
+      if (con_typ == "I2C")
+      {
+        int idx = formFieldName.substring(4).toInt() - 1; // "i2c_1" → 0
+        if (idx >= 0 && idx < 4)
+          savedAddrIndex = I2C_con_table[idx].addrIndex;
+      }
+      else if (con_typ == "I2C_5V")
+      {
+        savedAddrIndex = I2C_5V_con_table[0].addrIndex;
+      }
+
+      dropdown += "<select id='" + formFieldName + "_addr' name='" + formFieldName +
+                  "_addr' data-selected-addr='" + String(savedAddrIndex) + "'></select>";
     }
 
     dropdown += "</td>";
@@ -949,6 +896,28 @@ namespace WiFiManagerNS
     Serial.println(count);
 
     return i2c_html;
+  }
+
+  /****Helper functions */
+
+  bool getBoolArg(const char *name)
+  {
+    return _wifiManager->server->hasArg(name) &&
+           atoi(_wifiManager->server->arg(name).c_str()) == 1;
+  }
+
+  int getIntArg(const char *name, int defaultValue)
+  {
+    return _wifiManager->server->hasArg(name)
+               ? atoi(_wifiManager->server->arg(name).c_str())
+               : defaultValue;
+  }
+
+  String getStringArg(const char *name, const String &defaultValue)
+  {
+    return _wifiManager->server->hasArg(name)
+               ? _wifiManager->server->arg(name)
+               : defaultValue;
   }
 
   bool isFound(String addr)
