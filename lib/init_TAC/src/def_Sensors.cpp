@@ -659,5 +659,53 @@ const char *proto_sensors = R"([
     "possible_i2c_add": {
       "default": "0x40"
     }
+  },
+  {
+    "sensor-id": 26,
+    "name": "SHT_21",
+    "con_typ": "I2C",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 20.5,
+        "valueOrder": "TEMPERATURE",
+        "unit": "°C",
+        "data_name": "temp"
+      },
+      {
+        "value": 50.5,
+        "valueOrder": "HUMIDITY",
+        "unit": "%",
+        "data_name": "hum"
+      }
+    ],
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x40"
+    }
+  },
+  {
+    "sensor-id": 27,
+    "name": "LTR_390",
+    "con_typ": "I2C",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 100.5,
+        "valueOrder": "LUX",
+        "unit": "lx",
+        "data_name": "lux"
+      },
+      {
+        "value": 5.5,
+        "valueOrder": "UV_I",
+        "unit": "mW/cm^2",
+        "data_name": "UV Index"
+      }
+    ],
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x53"
+    }
   }
 ])";

@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 // Sensor settings
-#define SENSORS_NUM 26
+#define SENSORS_NUM 27
 #define MEASURMENT_NUM 8
 #define MAX_I2C_ADDRESSES 4
 #define JSON_BUFFER 15000
@@ -25,7 +25,7 @@ enum SensorsImplemented {
   CAP_GROOVE, DHT_22, DS18B20, MULTIGAS, MULTIGAS_V1,
   RTCDS3231, BATTERY, WS2812, SERVO, BME_280, ADS1115,
   SOUND, PRE_LVL, UV_DFR, LIGHT_DFR, DFR_LM35,
-  DFR_FLAME, DHT_11, BMP_680, BH_1750, SHT_21
+  DFR_FLAME, DHT_11, BMP_680, BH_1750, SHT_21, LTR_390
 };
 
 class Measurement {

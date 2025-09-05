@@ -39,6 +39,7 @@
 #include <Adafruit_BME680.h>
 #include <Adafruit_ADS1X15.h>
 #include "Adafruit_VEML7700.h"
+#include <LTR390.h>
 #include <hp_BH1750.h>
 #include <SHT2x.h>
 #include <Multichannel_Gas_GMXXX.h>
@@ -520,6 +521,39 @@ void readI2C_Connectors()
             newSensor.measurements[2].value = bme.readPressure();
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
             newSensor.measurements[4].value = (bme.gas_resistance / 1000.0);
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case LTR_390:
+        {
+            String addrStr = allSensors[LTR_390].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            LTR390 ltr(addr);
+
+            if (!ltr.init()) // just one i2c address known
+            {
+                delay(200);
+                Serial.println("Couldn't find LTR sensor!");
+                break;
+            }
+            Serial.println("Found LTR sensor!");
+
+            Sensor newSensor = allSensors[LTR_390];
+
+            ltr.setGain(LTR390_GAIN_3);                 // Recommended for Lux - x3
+            ltr.setResolution(LTR390_RESOLUTION_18BIT); // Recommended for Lux - 18-bit
+            ltr.setMode(LTR390_MODE_ALS);
+            delay(100);
+            newSensor.measurements[0].value = ltr.getLux();
+
+            ltr.setGain(LTR390_GAIN_18);                // Recommended for UVI - x18
+            ltr.setResolution(LTR390_RESOLUTION_20BIT); // Recommended for UVI - 20-bit
+            ltr.setMode(LTR390_MODE_UVS);
+            delay(100);
+            newSensor.measurements[1].value = ltr.getUVI();
 
             sensorVector.push_back(newSensor);
         }
