@@ -106,8 +106,10 @@ void configButtonTask(void *parameter);
 
 void setup()
 {
-   delay(1000);
-
+   #if DEBUG_PRINT
+   delay(2000);
+   #endif
+   
    initBoard();
    initFiles();
 

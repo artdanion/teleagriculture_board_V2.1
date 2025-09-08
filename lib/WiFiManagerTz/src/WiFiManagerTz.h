@@ -280,6 +280,7 @@ namespace WiFiManagerNS
     TimeConfHTML += "</script>";
 
     TimeConfHTML += "<style>strong {color:red;}</style>";
+
     TimeConfHTML += getTemplate(HTML_STYLE);
 
     TimeConfHTML += getTemplate(HTML_HEAD_END);
@@ -306,7 +307,7 @@ namespace WiFiManagerNS
     TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' ";
     TimeConfHTML += (upload == "NO") ? "checked " : "";
     TimeConfHTML += "/><label for='upload3'> NO upload</label></td>";
-    
+
     // TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
     TimeConfHTML += "</tr></table><br>";
 
@@ -597,10 +598,26 @@ namespace WiFiManagerNS
 
     delay(200);
 
-    const char *successResp = "<script>parent.location.href = '/';</script>";
-    const char *failureResp = "<script>parent.alert('fail');</script>";
+    String SavePage;
 
-    _wifiManager->server->send(200, "text/html", success ? successResp : failureResp);
+    SavePage += getTemplate(HTML_HEAD_START);
+    SavePage.replace(FPSTR(T_v), "TeleAgriCulture Board Setup");
+    SavePage += custom_Title_Html;
+    SavePage += "<BR><BR><div class='msg S'<h2>Setup Saved</h2>";
+    SavePage += "<BR>reseting Board";
+
+    SavePage += FPSTR(HTTP_END);
+
+    _wifiManager->server->sendHeader(FPSTR(HTTP_HEAD_CORS), FPSTR(HTTP_HEAD_CORS_ALLOW_ALL)); // @HTTPHEAD send cors
+    _wifiManager->server->send(200, FPSTR(HTTP_HEAD_CT), SavePage);
+    
+    //____________________________________________________________________________________________
+
+    // const char *successResp = "<script>parent.location.href = '/';</script>";
+    // const char *failureResp = "<script>parent.alert('fail');</script>";
+
+    // _wifiManager->server->send(200, "text/html", success ? successResp : failureResp);
+    //_wifiManager->server->send_P(200, "text/html", SavePage.c_str(), SavePage.length());
 
     delay(200);
     ESP.restart();
