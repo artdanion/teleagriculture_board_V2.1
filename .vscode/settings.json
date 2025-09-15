@@ -1,6 +1,8 @@
 {
     "cmake.configureOnOpen": false,
     "files.associations": {
-        "ctime": "cpp"
+        "ctime": "cpp",
+        "atomic": "cpp",
+        "cstdint": "cpp"
     }
 }

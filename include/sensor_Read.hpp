@@ -51,6 +51,7 @@
 #include "utils/Placeholder.h"
 #include <GravityTDS.h>
 #include <RTClib.h>
+#include "SparkFun_Weather_Meter_Kit_Arduino_Library.h"
 
 #define VREF 3.3 // analog reference voltage(Volt) of the ADC
 #define ADC_RES 4095
@@ -943,6 +944,76 @@ void readADC_Connectors()
 
             newSensor.measurements[0].value = temp;
             sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case WIND_VANE:
+        {
+            uint8_t windVanePin;
+
+            switch (i) {
+                case 0:
+                    windVanePin = ANALOG1;
+                    break;
+                case 1:
+                    windVanePin = ANALOG2;
+                    break;
+                case 2:
+                    windVanePin = ANALOG3;
+                    break;
+            }
+
+            // using a 4,7kOhm pullup resistor between SIGN and + PIN
+            SFEWeatherMeterKitCalibrationParams calibrationParams;
+            calibrationParams.vaneADCValues[WMK_ANGLE_0_0] = 3580;
+            calibrationParams.vaneADCValues[WMK_ANGLE_22_5] = 2267;
+            calibrationParams.vaneADCValues[WMK_ANGLE_45_0] = 2473;
+            calibrationParams.vaneADCValues[WMK_ANGLE_67_5] = 590;
+            calibrationParams.vaneADCValues[WMK_ANGLE_90_0] = 653;
+            calibrationParams.vaneADCValues[WMK_ANGLE_112_5] = 467;
+            calibrationParams.vaneADCValues[WMK_ANGLE_135_0] = 1210;
+            calibrationParams.vaneADCValues[WMK_ANGLE_157_5] = 866;
+            calibrationParams.vaneADCValues[WMK_ANGLE_180_0] = 1750;
+            calibrationParams.vaneADCValues[WMK_ANGLE_202_5] = 1541;
+            calibrationParams.vaneADCValues[WMK_ANGLE_225_0] = 3048;
+            calibrationParams.vaneADCValues[WMK_ANGLE_247_5] = 2945;
+            calibrationParams.vaneADCValues[WMK_ANGLE_270_0] = 4095;
+            calibrationParams.vaneADCValues[WMK_ANGLE_292_5] = 3734;
+            calibrationParams.vaneADCValues[WMK_ANGLE_315_0] = 3950;
+            calibrationParams.vaneADCValues[WMK_ANGLE_337_5] = 3293;
+
+            pinMode(windVanePin, INPUT);
+            
+            uint16_t rawADC = analogRead(windVanePin);
+
+            int16_t closestDifference = 32767;
+            uint8_t closestIndex = 0;
+            for (uint8_t i = 0; i < WMK_NUM_ANGLES; i++)
+            {
+                // Compute the difference between the ADC value for this direction and
+                // what we measured
+                int16_t adcDifference = calibrationParams.vaneADCValues[i] - rawADC;
+
+                // We only care about the magnitude of the difference
+                adcDifference = abs(adcDifference);
+
+                // Check if this different is less than our closest so far
+                if (adcDifference < closestDifference)
+                {
+                    // This resistance is closer, update closest resistance and index
+                    closestDifference = adcDifference;
+                    closestIndex = i;
+                }
+            }
+
+            // Now compute the wind direction in degrees
+            float direction = closestIndex * SFE_WIND_VANE_DEGREES_PER_INDEX;
+
+            // add value to sensor
+            Sensor newSensor = allSensors[WIND_VANE];
+            newSensor.measurements[0].value = direction;
+            sensorVector.push_back(newSensor);
+            
         }
         break;
 
