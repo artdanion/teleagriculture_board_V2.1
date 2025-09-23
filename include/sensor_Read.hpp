@@ -2,7 +2,7 @@
  *
  * TeleAgriCulture Board Sensor Read
  *
- * Copyright (c) 2023 artdanion
+ * Copyright (c) 2025 artdanion
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@
  *
 \*/
 
-// TODO: a system for multible simular measurments, NAMING
 #pragma once
 
 #include <Arduino.h>
@@ -168,7 +167,8 @@ void sensorRead()
         {
             // Turn heater element on
             multiGasV1.powerOn();
-            delay(20000); // heat up 20sek
+            if (!forceConfig)
+                delay(20000); // heat up 20sek
         }
         else
         {
@@ -177,19 +177,21 @@ void sensorRead()
         }
     }
 
-    Sensor newSensor = allSensors[BATTERY];
-    newSensor.measurements->value = getBatteryVoltage();
-    sensorVector.push_back(newSensor);
+    if (!forceConfig)
+    {
+        Sensor newSensor = allSensors[BATTERY];
+        newSensor.measurements->value = getBatteryVoltage();
+        sensorVector.push_back(newSensor);
 
-    Serial.println("SensorRead.....");
-    Serial.println();
+        Serial.println("SensorRead.....");
+        Serial.println();
 
-    readOneWire_Connectors();
-    readADC_Connectors();
-    readI2C_Connectors();
-    readI2C_5V_Connector();
-    readEXTRA_Connectors();
-
+        readOneWire_Connectors();
+        readADC_Connectors();
+        readI2C_Connectors();
+        readI2C_5V_Connector();
+        readEXTRA_Connectors();
+    }
     // digitalWrite(SW_3V3, LOW);
     digitalWrite(SW_5V, LOW);
     digitalWrite(LED, LOW);
@@ -199,8 +201,6 @@ void sensorRead()
 
 void readI2C_Connectors()
 {
-    // TwoWire I2CCON = TwoWire(0);
-    // I2CCON.begin(I2C_SDA, I2C_SCL);
     Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
 
     for (int j = 0; j < I2C_NUM; j++)
@@ -227,8 +227,6 @@ void readI2C_Connectors()
             {
                 Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
                                  "try a different address!"));
-                while (1)
-                    delay(10);
             }
             delay(100);
 
@@ -280,7 +278,7 @@ void readI2C_Connectors()
             Sensor newSensor = allSensors[BME_280];
             newSensor.measurements[0].value = bme.readHumidity();
             newSensor.measurements[1].value = bme.readTemperature();
-            newSensor.measurements[2].value = (bme.readPressure() / 100.0F);
+            newSensor.measurements[2].value = (double)(bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
 
             sensorVector.push_back(newSensor);
@@ -449,18 +447,11 @@ void readI2C_Connectors()
 
         case SHT_21:
         {
-            SHT2x sht2x;
             float temp, humi;
 
-            // SHT21 i2c address 0x40
-            if (!sht2x.begin())
-            {
-                Serial.println("SHT21 not found");
-                break;
-            }
+            temp=SHT2x.GetTemperature();
+            humi=SHT2x.GetHumidity();
 
-            temp = sht2x.readTemperature();
-            humi = sht2x.readHumidity();
 
             Sensor newSensor = allSensors[SHT_21];
             newSensor.measurements[0].value = temp;
@@ -518,7 +509,7 @@ void readI2C_Connectors()
             Sensor newSensor = allSensors[BMP_680];
             newSensor.measurements[0].value = bme.readTemperature();
             newSensor.measurements[1].value = bme.readHumidity();
-            newSensor.measurements[2].value = bme.readPressure();
+            newSensor.measurements[2].value = (double)(bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
             newSensor.measurements[4].value = (bme.gas_resistance / 1000.0);
 

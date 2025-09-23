@@ -1,5 +1,8 @@
 #include "def_Sensors.h"
 
+
+static inline float round2f(float x) { return roundf(x * 100.0f) / 100.0f; }
+
 Sensor::Sensor() : sensor_id(), sensor_name(), con_typ(), returnCount(0), addr_num(0)
 {
   for (int i = 0; i < 8; ++i)

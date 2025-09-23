@@ -1,8 +1,10 @@
+
 #include <Arduino.h>
 #include <debug_functions.h>
 #include <init_Board.h>
 #include <file_functions.h>
 #include <board_credentials.h>
+
 
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
@@ -11,12 +13,12 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
    File root = fs.open(dirname);
    if (!root)
    {
-      Serial.println("− failed to open directory");
+      Serial.println("- failed to open directory");
       return;
    }
    if (!root.isDirectory())
    {
-      Serial.println(" − not a directory");
+      Serial.println("- not a directory");
       return;
    }
 
@@ -45,12 +47,8 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 
 void checkLoadedStuff(void)
 {
-   // Serial.println();
-   // Serial.println("---------------Prototype Sensors loaded -----------");
-   // printProtoSensors();
    Serial.println();
    Serial.println("---------------Connector table loaded -----------");
-
    printConnectors(ConnectorType::I2C);
    printConnectors(ConnectorType::ADC);
    printConnectors(ConnectorType::ONE_WIRE);
@@ -60,33 +58,46 @@ void checkLoadedStuff(void)
 
    Serial.println();
    Serial.println("---------------Config loaded -----------");
-
    Serial.println("Configuration Values:");
+
+   // Order matches load_Config()
    Serial.printf("BoardID: %d\n", boardID);
    Serial.printf("useBattery: %d\n", useBattery);
    Serial.printf("useDisplay: %d\n", useDisplay);
    Serial.printf("saveDataSDCard: %d\n", saveDataSDCard);
+
    Serial.printf("useEnterpriseWPA: %d\n", useEnterpriseWPA);
    Serial.printf("useCustomNTP: %d\n", useCustomNTP);
    Serial.printf("useNTP: %d\n", useNTP);
+   Serial.printf("rtcEnabled: %d\n", rtcEnabled);
+
    Serial.printf("API_KEY: %s\n", API_KEY.c_str());
    Serial.printf("upload: %s\n", upload.c_str());
-   Serial.printf("upload_interval: %d\n", upload_interval);
+   Serial.printf("upInterval (upload_interval): %d\n", upload_interval);
+
    Serial.printf("anonym: %s\n", anonym.c_str());
    Serial.printf("user_CA: %s\n", user_CA.c_str());
    Serial.printf("customNTPaddress: %s\n", customNTPaddress.c_str());
    Serial.printf("timeZone: %s\n", timeZone.c_str());
+
    Serial.printf("OTAA_DEVEUI: %s\n", OTAA_DEVEUI.c_str());
    Serial.printf("OTAA_APPEUI: %s\n", OTAA_APPEUI.c_str());
    Serial.printf("OTAA_APPKEY: %s\n", OTAA_APPKEY.c_str());
    Serial.printf("lora_ADR: %d\n", lora_ADR);
+
    Serial.printf("apn: %s\n", apn.c_str());
    Serial.printf("gprs_user: %s\n", gprs_user.c_str());
    Serial.printf("gprs_pass: %s\n", gprs_pass.c_str());
 
-   Serial.println("\n---------------DEBUGG END -----------");
+   // NEW: LIVE / MQTT / OSC
+   Serial.printf("live_mode: %s\n", live_mode.c_str());
+   Serial.printf("mqtt_server_ip: %s\n", mqtt_server_ip.c_str());
+   Serial.printf("mqtt_topic: %s\n", mqtt_topic.c_str());
+   Serial.printf("mqtt port: %d\n", mqtt_port);
+   Serial.printf("osc_ip: %s\n", osc_ip.c_str());
+   Serial.printf("osc_port: %d\n", static_cast<int>(osc_port));
 
-   Serial.println();
+   Serial.println("\n---------------DEBUG END -----------\n");
 }
 
 void printConnectors(ConnectorType typ)

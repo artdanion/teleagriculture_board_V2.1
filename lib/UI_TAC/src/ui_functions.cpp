@@ -6,19 +6,18 @@
 #include <board_credentials.h>
 #include <Fonts/FreeSans9pt7b.h>
 
-
 void initDisplay()
 {
-      tft = new Adafruit_ST7735(spi, TFT_CS, TFT_DC, TFT_RST);
-      tft->setSPISpeed(1000000);
+   tft = new Adafruit_ST7735(spi, TFT_CS, TFT_DC, TFT_RST);
+   tft->setSPISpeed(1000000);
 
-      // ----- Initiate the TFT display and Start Image----- //
-      tft->initR(INITR_GREENTAB); // work around to set protected offset values
-      tft->initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
+   // ----- Initiate the TFT display and Start Image----- //
+   tft->initR(INITR_GREENTAB); // work around to set protected offset values
+   tft->initR(INITR_BLACKTAB); // change the colormode back, offset values stay as "green display"
 
-      tft->cp437(true);
-      tft->setCursor(0, 0);
-      tft->setRotation(3);
+   tft->cp437(true);
+   tft->setCursor(0, 0);
+   tft->setRotation(3);
 }
 
 void initDisplayIfNeeded()
@@ -109,7 +108,60 @@ void mainPage()
       tft->print("last data UPLOAD: ");
       tft->setTextColor(ST7735_ORANGE);
       tft->print(upload);
+      tft->setTextColor(ST7735_ORANGE);
+      tft->setCursor(5, 115);
+      tft->print(lastUpload);
+   }
+   else if (upload=="LIVE" && live_mode == "MQTT")
+   {
+      digitalClockDisplay(5, 95, true);
 
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 65);
+      tft->print("WiFi: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.SSID());
+      tft->setCursor(5, 75);
+      tft->setTextColor(0xCED7);
+      tft->print("MQTT: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(mqtt_server_ip);
+      tft->setCursor(5, 85);
+      tft->print("Topic: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(mqtt_topic);
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 105);
+      tft->print("last data UPLOAD: ");
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print(upload);
+      tft->setTextColor(ST7735_ORANGE);
+      tft->setCursor(5, 115);
+      tft->print(lastUpload);
+   }
+   else if (upload=="LIVE" && live_mode == "OSC")
+   {
+      digitalClockDisplay(5, 95, true);
+
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 65);
+      tft->print("WiFi: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(WiFi.SSID());
+      tft->setCursor(5, 75);
+      tft->setTextColor(0xCED7);
+      tft->print("OSC IP: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(osc_ip);
+      tft->setCursor(5, 85);
+      tft->print("Port: ");
+      tft->setTextColor(ST7735_WHITE);
+      tft->print(osc_port);
+      tft->setTextColor(0xCED7);
+      tft->setCursor(5, 105);
+      tft->print("last data UPLOAD: ");
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print(upload);
       tft->setTextColor(ST7735_ORANGE);
       tft->setCursor(5, 115);
       tft->print(lastUpload);
@@ -130,9 +182,16 @@ void mainPage()
       tft->print("MAC: ");
       tft->setTextColor(ST7735_WHITE);
       tft->print(WiFi.softAPmacAddress());
-      tft->setCursor(5, 95);
-      tft->print("no time sync");
-      tft->setTextColor(ST7735_RED);
+      if (rtcEnabled == true)
+      {
+         digitalClockDisplay(5, 95, true);
+      }
+      else
+      {
+         tft->setCursor(5, 95);
+         tft->print("no time sync");
+         tft->setTextColor(ST7735_RED);
+      }
       tft->setCursor(5, 105);
       tft->print("up load:");
       tft->print("  ");
@@ -158,9 +217,16 @@ void mainPage()
       tft->print("MAC: ");
       tft->setTextColor(ST7735_WHITE);
       tft->print(WiFi.softAPmacAddress());
-      tft->setTextColor(ST7735_ORANGE);
-      tft->setCursor(5, 95);
-      tft->print("TTN no time sync");
+      if (rtcEnabled)
+      {
+         digitalClockDisplay(5, 95, true);
+      }
+      else
+      {
+         tft->setTextColor(ST7735_ORANGE);
+         tft->setCursor(5, 95);
+         tft->print("TTN no time sync");
+      }
       tft->setTextColor(ST7735_RED);
       tft->setCursor(5, 105);
       tft->print(lora_fqz);

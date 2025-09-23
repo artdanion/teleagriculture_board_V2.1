@@ -44,6 +44,7 @@ extern bool lora_ADR;
 extern int upload_interval;
 
 extern String upload;
+extern String live_mode;
 extern String anonym;
 extern String user_CA;
 extern String setTime_value;

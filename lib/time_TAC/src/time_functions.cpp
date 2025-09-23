@@ -101,7 +101,7 @@ String get_header()
    }
 
    client.stop();
-   
+
 #if DEBUG_PRINT
    Serial.println("[HTTPS] Received header:");
    Serial.println(header);
@@ -223,24 +223,32 @@ void setRTCfromConfigPortal(const String &setTime_value, const String &timeZone)
 
       Serial.println("ESP32 system time updated from ConfigPortal");
 
-      if (rtc.begin())
+      delay(200);
+
+      if (rtcEnabled)
       {
-         rtc.adjust(DateTime(utcEpoch)); // store UTC in RTC
-         Serial.println("RTC updated with UTC from ConfigPortal");
+
+         if (rtc.begin())
+         {
+            rtc.adjust(DateTime(utcEpoch)); // store UTC in RTC
+            Serial.println("RTC updated with UTC from ConfigPortal");
+         }
+         else
+            Serial.println("NO RTC connected");
+
+         // Debug output
+         struct tm localNow;
+         getLocalTime(&localNow);
+         Serial.printf("Local system time: %s", asctime(&localNow));
+
+         struct tm utcNow;
+         gmtime_r(&utcEpoch, &utcNow);
+         Serial.printf("UTC stored in RTC: %s", asctime(&utcNow));
       }
-
-      // Debug output
-      struct tm localNow;
-      getLocalTime(&localNow);
-      Serial.printf("Local system time: %s", asctime(&localNow));
-
-      struct tm utcNow;
-      gmtime_r(&utcEpoch, &utcNow);
-      Serial.printf("UTC stored in RTC: %s", asctime(&utcNow));
-   }
-   else
-   {
-      Serial.println("Failed to parse setTime_value string!");
+      else
+      {
+         Serial.println("Failed to parse setTime_value string!");
+      }
    }
 }
 
@@ -279,14 +287,14 @@ void setESP32timeFromRTC(const char *tz)
       Serial.println("mktime failed");
       return;
    }
-   
+
    struct timeval tv = {.tv_sec = epoch};
    settimeofday(&tv, NULL);
 
-      setenv("TZ", tz, 1);
+   setenv("TZ", tz, 1);
    tzset();
 
-   Serial.println("ESP32 time restored from RTC");
+   Serial.println("\nESP32 time restored from RTC");
    printLocalTime();
 }
 

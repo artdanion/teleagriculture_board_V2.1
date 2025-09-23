@@ -216,7 +216,7 @@ void load_Connectors()
       return;
    }
 
-   StaticJsonDocument<650> doc;
+   StaticJsonDocument<800> doc;
    DeserializationError error = deserializeJson(doc, connectorsFile);
    connectorsFile.close();
 
@@ -312,7 +312,7 @@ void load_Connectors()
 
 void save_Connectors()
 {
-   StaticJsonDocument<650> doc;
+   StaticJsonDocument<800> doc;
 
    // I2C
    JsonArray jsonI2C = doc.createNestedArray("I2C_connectors");
@@ -369,73 +369,15 @@ void save_Connectors()
    }
    serializeJsonPretty(doc, connectorsFile);
    connectorsFile.close();
-}
 
-void load_Config(void)
-{
-   if (SPIFFS.begin())
-   {
-      if (SPIFFS.exists("/board_config.json"))
-      {
-         // file exists, reading and loading
-         // Serial.println("reading config file");
-         File configFile = SPIFFS.open("/board_config.json", "r");
-         if (configFile)
-         {
-            // Serial.println("opened config file");
-            size_t size = configFile.size();
-            // Allocate a buffer to store contents of the file.
-            std::unique_ptr<char[]> buf(new char[size]);
-
-            configFile.readBytes(buf.get(), size);
-
-            StaticJsonDocument<650> doc;
-            auto deserializeError = deserializeJson(doc, buf.get());
-
-            if (!deserializeError)
-            {
-               boardID = doc["BoardID"];
-               useBattery = doc["useBattery"];
-               useDisplay = doc["useDisplay"];
-               saveDataSDCard = doc["saveDataSDCard"];
-               useEnterpriseWPA = doc["useEnzerpriseWPA"];
-               useCustomNTP = doc["useCustomNTP"];
-               useNTP = doc["useNTP"];
-               rtcEnabled = doc["rtcEnabled"];
-               API_KEY = doc["API_KEY"].as<String>();
-               upload = doc["upload"].as<String>();
-               upload_interval = doc["upInterval"];
-               anonym = doc["anonym"].as<String>();
-               user_CA = doc["user_CA"].as<String>();
-               customNTPaddress = doc["customNTPadress"].as<String>();
-               timeZone = doc["timeZone"].as<String>();
-               OTAA_DEVEUI = doc["OTAA_DEVEUI"].as<String>();
-               OTAA_APPEUI = doc["OTAA_APPEUI"].as<String>();
-               OTAA_APPKEY = doc["OTAA_APPKEY"].as<String>();
-               lora_ADR = doc["lora_ADR"];
-               apn = doc["apn"].as<String>();
-               gprs_user = doc["gprs_user"].as<String>();
-               gprs_pass = doc["gprs_pass"].as<String>();
-            }
-         }
-         else
-         {
-            Serial.println("failed to load json config");
-            forceConfig = true;
-         }
-         configFile.close();
-      }
-   }
-   else
-   {
-      Serial.println("failed to mount FS");
-      forceConfig = true;
-   }
+   Serial.println("Saved Connector File");
 }
 
 void save_Config(void)
 {
-   StaticJsonDocument<650> doc;
+   Serial.println("saveConfig start");
+
+   DynamicJsonDocument doc(1152); // heap, not stack
 
    doc["BoardID"] = boardID;
    doc["useBattery"] = useBattery;
@@ -445,29 +387,151 @@ void save_Config(void)
    doc["useCustomNTP"] = useCustomNTP;
    doc["useNTP"] = useNTP;
    doc["rtcEnabled"] = rtcEnabled;
-   doc["API_KEY"] = API_KEY;
-   doc["upload"] = upload;
+
+   doc["API_KEY"] = API_KEY.length() ? API_KEY : "";
+   doc["upload"] = upload.length() ? upload : "";
    doc["upInterval"] = upload_interval;
-   doc["anonym"] = anonym;
-   doc["user_CA"] = user_CA;
-   doc["customNTPadress"] = customNTPaddress;
-   doc["timeZone"] = timeZone;
-   doc["OTAA_DEVEUI"] = OTAA_DEVEUI;
-   doc["OTAA_APPEUI"] = OTAA_APPEUI;
-   doc["OTAA_APPKEY"] = OTAA_APPKEY;
+
+   doc["OTAA_DEVEUI"] = OTAA_DEVEUI.length() ? OTAA_DEVEUI : "";
+   doc["OTAA_APPEUI"] = OTAA_APPEUI.length() ? OTAA_APPEUI : "";
+   doc["OTAA_APPKEY"] = OTAA_APPKEY.length() ? OTAA_APPKEY : "";
    doc["lora_ADR"] = lora_ADR;
-   doc["apn"] = apn;
-   doc["gprs_user"] = gprs_user;
-   doc["gprs_pass"] = gprs_pass;
+
+   doc["anonym"] = anonym.length() ? anonym : "";
+   doc["user_CA"] = user_CA.length() ? user_CA : "";
+   doc["customNTPadress"] = customNTPaddress.length() ? customNTPaddress : "";
+   doc["timeZone"] = timeZone.length() ? timeZone : "";
+   doc["apn"] = apn.length() ? apn : "";
+   doc["gprs_user"] = gprs_user.length() ? gprs_user : "";
+   doc["gprs_pass"] = gprs_pass.length() ? gprs_pass : "";
+
+   // NEU: LIVE/MQTT/OSC
+   doc["live_mode"] = live_mode.length() ? live_mode : "";
+   doc["mqtt_server_ip"] = mqtt_server_ip.length() ? mqtt_server_ip : "";
+   doc["mqtt_topic"] = mqtt_topic.length() ? mqtt_topic : "";
+   doc["mqtt_port"] = static_cast<int>(mqtt_port);
+   doc["osc_ip"] = osc_ip.length() ? osc_ip : "";
+   doc["osc_port"] = static_cast<int>(osc_port);
 
    File configFile = SPIFFS.open("/board_config.json", "w");
    if (!configFile)
    {
       Serial.println("failed to open config file for writing");
+      return;
+   }
+   serializeJson(doc, configFile);
+   configFile.close();
+
+   Serial.println("Saved Config File");
+}
+
+void load_Config(void)
+{
+   if (!SPIFFS.begin())
+   {
+      Serial.println("failed to mount FS");
+      forceConfig = true;
+      return;
+   }
+   if (!SPIFFS.exists("/board_config.json"))
+   {
+      Serial.println("config file not found (using defaults)");
+      return;
    }
 
-   serializeJson(doc, configFile);
+   File configFile = SPIFFS.open("/board_config.json", "r");
+   if (!configFile)
+   {
+      Serial.println("failed to open config file");
+      forceConfig = true;
+      return;
+   }
 
+   size_t size = configFile.size();
+   std::unique_ptr<char[]> buf(new char[size + 1]);
+   size_t nread = configFile.readBytes(buf.get(), size);
+   buf[nread] = '\0';
    configFile.close();
-   // end save
+
+   DynamicJsonDocument doc(1152); // heap, not stack
+   DeserializationError err = deserializeJson(doc, buf.get());
+   if (err)
+   {
+      Serial.printf("deserializeJson error: %s\n", err.c_str());
+      forceConfig = true;
+      return;
+   }
+
+   if (doc.containsKey("BoardID"))
+      boardID = doc["BoardID"].as<int>();
+   if (doc.containsKey("useBattery"))
+      useBattery = doc["useBattery"];
+   if (doc.containsKey("useDisplay"))
+      useDisplay = doc["useDisplay"];
+   if (doc.containsKey("saveDataSDCard"))
+      saveDataSDCard = doc["saveDataSDCard"];
+
+   // Abwärtskompatibel: falscher Key-Name wurde früher geschrieben
+   if (doc.containsKey("useEnterpriseWPA"))
+      useEnterpriseWPA = doc["useEnterpriseWPA"];
+   else if (doc.containsKey("useEnzerpriseWPA"))
+      useEnterpriseWPA = doc["useEnzerpriseWPA"];
+
+   if (doc.containsKey("useCustomNTP"))
+      useCustomNTP = doc["useCustomNTP"];
+   if (doc.containsKey("useNTP"))
+      useNTP = doc["useNTP"];
+   if (doc.containsKey("rtcEnabled"))
+      rtcEnabled = doc["rtcEnabled"];
+
+   if (doc.containsKey("API_KEY"))
+      API_KEY = doc["API_KEY"].as<String>();
+   if (doc.containsKey("upload"))
+      upload = doc["upload"].as<String>();
+   if (doc.containsKey("upInterval"))
+      upload_interval = doc["upInterval"].as<int>();
+   if (doc.containsKey("anonym"))
+      anonym = doc["anonym"].as<String>();
+   if (doc.containsKey("user_CA"))
+      user_CA = doc["user_CA"].as<String>();
+   if (doc.containsKey("customNTPadress"))
+      customNTPaddress = doc["customNTPadress"].as<String>(); // (sic)
+   if (doc.containsKey("timeZone"))
+      timeZone = doc["timeZone"].as<String>();
+   if (doc.containsKey("OTAA_DEVEUI"))
+      OTAA_DEVEUI = doc["OTAA_DEVEUI"].as<String>();
+   if (doc.containsKey("OTAA_APPEUI"))
+      OTAA_APPEUI = doc["OTAA_APPEUI"].as<String>();
+   if (doc.containsKey("OTAA_APPKEY"))
+      OTAA_APPKEY = doc["OTAA_APPKEY"].as<String>();
+   if (doc.containsKey("lora_ADR"))
+      lora_ADR = doc["lora_ADR"];
+   if (doc.containsKey("apn"))
+      apn = doc["apn"].as<String>();
+   if (doc.containsKey("gprs_user"))
+      gprs_user = doc["gprs_user"].as<String>();
+   if (doc.containsKey("gprs_pass"))
+      gprs_pass = doc["gprs_pass"].as<String>();
+
+   // new: LIVE/MQTT/OSC
+   if (doc.containsKey("live_mode"))
+      live_mode = doc["live_mode"].as<String>();
+   if (doc.containsKey("mqtt_server_ip"))
+      mqtt_server_ip = doc["mqtt_server_ip"].as<String>();
+   if (doc.containsKey("mqtt_topic"))
+      mqtt_topic = doc["mqtt_topic"].as<String>();
+   if (doc.containsKey("mqtt_port"))
+   {
+      int m = doc["mqtt_port"].as<int>();
+      if (m >= 1 && m <= 65535)
+         mqtt_port = static_cast<uint16_t>(m);
+   }
+   if (doc.containsKey("osc_ip"))
+      osc_ip = doc["osc_ip"].as<String>();
+   if (doc.containsKey("osc_port"))
+   {
+      int p = doc["osc_port"].as<int>();
+      if (p >= 1 && p <= 65535)
+         osc_port = static_cast<uint16_t>(p);
+   }
 }

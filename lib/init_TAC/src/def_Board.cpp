@@ -28,6 +28,7 @@ bool lora_ADR = false;
 int upload_interval = 60;
 
 String upload = "WIFI";
+String live_mode="MQTT";
 String anonym = "anonymus@example.com";
 String user_CA = "-----BEGIN CERTIFICATE----- optional -----END CERTIFICATE-----";
 String setTime_value = "";

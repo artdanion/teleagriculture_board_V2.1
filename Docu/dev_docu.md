@@ -140,10 +140,11 @@ Set via Web Configuration Portal or `config.json`:
 4. **Storage**: In-memory buffering for upload or SD card writing
 
 ### Adding New Sensors
-1. **Enum Definition**: Add entry to `SensorsImplemented` in `sensor_Board.hpp`
+1. **Enum Definition**: Add entry to `SensorsImplemented` in `sensor_Board.h`
 2. **Metadata Registration**: Update `proto_sensors[]` JSON with sensor specifications
-3. **Reading Logic**: Implement handler in appropriate `read*_Connectors()` function
-4. **LoRa Integration**: Add to payload encoding via `getValueOrderFromString()`
+3. Raise `SENSORS_NUM` in `def_Sensors.h` by 1.
+4. **Reading Logic**: Implement handler in appropriate `read*_Connectors()` function
+5. **LoRa Integration**: Add to payload encoding via `getValueOrderFromString()`
 
 
 ---

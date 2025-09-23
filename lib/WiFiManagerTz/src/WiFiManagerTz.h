@@ -8,51 +8,42 @@ Listing directory: /
   FILE: connectors.json SIZE: 174
   FILE: board_config.json       SIZE: 554
 
-board_config.json:
-BoardID: 1000
-useBattery: 0
-useDisplay: 1
-saveDataSDCard: 0
-useEnterpriseWPA: 0
-useCustomNTP: 0
-useNTP: 1
-API_KEY: xxxxxxxxxxxxxxXXXXXxxxxxxxxxxxxx
-upload: WIFI
-upload_interval: 2
-anonym: anonymus@example.com
-user_CA: -----BEGIN CERTIFICATE----- optional -----END CERTIFICATE-----
-OTAA_DEVEUI: 0000000000000000
-OTAA_APPEUI: 0000000000000000
-OTAA_APPKEY: 00000000000000000000000000000000
-lora_ADR: 0
-apn: 0000
-gprs_user: XXXXX
-gprs_pass: XXXXX
-
-upload_interval: 60
-system-time: 1970-01-01T01:07
-timezone: 810
-set-time: 2023-04-01T09:45
-use-ntp-server: 1
-enable-dst: 1
-custom_ntp_enable: 1
-custom_ntp: 129.6.15.28
-ntp-server: 3
-ntp-server-interval: 60
-
-connectors.json:
-i2c_1: -1
-i2c_3: -1
-i2c_2: -1
-i2c_4: -1
-I2C_5V: -1
-adc_1: -1
-onewire_1: 6
-adc_2: -1
-onewire_2: -1
-adc_3: -1
-onewire_3: 7
-
+Server Arguments
+=== RECEIVED FORM DATA ===
+Arg 0: upload = 'LORA'
+Arg 1: display = '1'
+Arg 2: up_interval = '2'
+Arg 3: BoardID = '1014'
+Arg 4: API_KEY = 'fkYauyaxirkYjSKrzR8lzKuVnak4l2nV'
+Arg 5: OTAA_APPEUI = '0000000000000000'
+Arg 6: OTAA_DEVEUI = '70B3D57ED005D967'
+Arg 7: OTAA_APPKEY = 'EDA96CD96FC5A6C31CCC77D65284C6A4'
+Arg 8: apn = '0000'
+Arg 9: gprs_user = 'XXXXX'
+Arg 10: gprs_pass = 'XXXXX'
+Arg 11: i2c_1 = '23'
+Arg 12: i2c_1_addr = '0'
+Arg 13: i2c_3 = '24'
+Arg 14: i2c_3_addr = '0'
+Arg 15: i2c_2 = '0'
+Arg 16: i2c_2_addr = '1'
+Arg 17: i2c_4 = '10'
+Arg 18: i2c_4_addr = '0'
+Arg 19: I2C_5V = '-1'
+Arg 20: adc_1 = '-1'
+Arg 21: onewire_1 = '22'
+Arg 22: adc_2 = '-1'
+Arg 23: onewire_2 = '-1'
+Arg 24: adc_3 = '-1'
+Arg 25: onewire_3 = '-1'
+Arg 26: system-time = '2025-09-18T19:26'
+Arg 27: timezone = '810'
+Arg 28: set-time = '2025-09-18T19:27'
+Arg 29: enable-dst = '1'
+Arg 30: custom_ntp = '129.6.15.28'
+Arg 31: ntp-server = '0'
+Arg 32: ntp-server-interval = '60'
+=== END FORM DATA ===
 */
 
 #pragma once
@@ -93,15 +84,22 @@ namespace WiFiManagerNS
   void handleI2CSettings();
   void handleADCSettings();
   void handleOneWireSettings();
+
   void handlePeripheralSettings();
   void handleUploadSettings();
   void handleLoraSettings();
-  void handleGPRSSettings();
   void handleTimeSetting();
-
   void updateRtcStatus();
+  void handleLiveSettings();
+
+  void handleSavedPage();
+  void handleReboot();
 
   void bindServerCallback();
+
+  static inline const Sensor *findSensorByTypeIndex(const String &con_typ, int selectedIndex);
+  static void appendSensorCard(String &html, const String &title,
+                               const String &con_typ, int selectedIndex, int addrIndex = -1);
 
   bool isFound(String addr);
   bool getBoolArg(const char *name);
@@ -186,7 +184,7 @@ namespace WiFiManagerNS
 
   void handleFavicon()
   {
-    _wifiManager->server->send_P(200, "text/html", favicon.c_str(), sizeof(favicon));
+    _wifiManager->server->send_P(200, "text/html", favicon.c_str(), favicon.length());
   }
 
   String getSystimeStr()
@@ -201,6 +199,27 @@ namespace WiFiManagerNS
     strftime(systime, sizeof systime, "%Y-%m-%dT%H:%M", nowtm);
     systimeStr = String(systime);
     return systimeStr;
+  }
+
+  static void beginSensorsCard(String &html)
+  {
+    html += F(
+        "<div class='card'>"
+        "<div class='card-h'>Saved Sensors</div>"
+        "<div class='card-b'>"
+        "<table class='tbl'>"
+        "<thead><tr>"
+        "<th>CON</th><th>Typ</th><th>Sensor</th><th>I2C-Adr</th><th>Status</th>"
+        "</tr></thead><tbody>");
+  }
+
+  // einmal nach allen Zeilen aufrufen
+  static void endSensorsCard(String &html)
+  {
+    html += F(
+        "</tbody></table>"
+        "</div>"
+        "</div>");
   }
 
   void handleRoute()
@@ -224,195 +243,283 @@ namespace WiFiManagerNS
 
     // Script to set initial time
     TimeConfHTML += "<script>";
-    TimeConfHTML += "window.addEventListener('load', function() { var now = new Date(); var offset = now.getTimezoneOffset() * 60000; var adjustedDate = new Date(now.getTime() - offset);";
-    TimeConfHTML += "document.getElementById('set-time').value = adjustedDate.toISOString().substring(0,16); });";
+    TimeConfHTML += "window.addEventListener('load', function(){"
+                    "var now=new Date();var offset=now.getTimezoneOffset()*60000;"
+                    "var adjustedDate=new Date(now.getTime()-offset);"
+                    "var el=document.getElementById('set-time'); if(el){el.value=adjustedDate.toISOString().substring(0,16);}"
+                    "});";
     TimeConfHTML += "</script>";
 
-    // Script to choose upload method
+    // ===== Unified UI logic (show/hide WIFI/LORA/GSM/LIVE + LIVE sub-forms) =====
     TimeConfHTML += "<script>";
-    TimeConfHTML += "function chooseUploade() { var checked = document.querySelector('input[name=upload]:checked'); var div = document.getElementById('Lora'); var divNTP = document.getElementById('use_NTP'); var divNoNTP = document.getElementById('no_NTP'); var divGSM = document.getElementById('GSM');";
-    TimeConfHTML += "if (checked && checked.value == 'LORA') { div.style.display = 'block'; var checkbox = document.getElementById('use-WPA_enterprise'); checkbox.checked = false; divNTP.style.display = 'none'; divNoNTP.style.display = 'block'; divGSM.style.display = 'none'; }";
-    TimeConfHTML += "else if (checked && checked.value == 'NO') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; }";
-    TimeConfHTML += "else if (checked && checked.value == 'GSM') { div.style.display = 'none'; divNTP.style.display = 'none'; divNoNTP.style.display = 'none'; divGSM.style.display = 'block'; }";
-    TimeConfHTML += "else { div.style.display = 'none'; divNTP.style.display = 'block'; divNoNTP.style.display = 'none'; divGSM.style.display = 'none'; } }";
+    TimeConfHTML += "function show(e){if(e)e.style.display='block'};";
+    TimeConfHTML += "function hide(e){if(e)e.style.display='none'};";
+    TimeConfHTML += "function setLiveRequired(mq,os){"
+                    "var mi=document.getElementById('mqtt_server_ip');"
+                    "var mt=document.getElementById('mqtt_topic');"
+                    "var mp=document.getElementById('mqtt_port');"
+                    "var oi=document.getElementById('osc_ip');"
+                    "var op=document.getElementById('osc_port');"
+                    "if(mi)mi.required=!!mq; if(mt)mt.required=!!mq;"
+                    "if(mp) mp.required=!!mq;"
+                    "if(oi)oi.required=!!os; if(op)op.required=!!os;"
+                    "}";
+    TimeConfHTML += "function chooseLive(){"
+                    "var cbM=document.getElementById('live_mqtt');"
+                    "var cbO=document.getElementById('live_osc');"
+                    "var m=document.getElementById('LIVE_MQTT');"
+                    "var o=document.getElementById('LIVE_OSC');"
+                    "if(this&&this.id==='live_mqtt'&&cbM&&cbM.checked){if(cbO)cbO.checked=false;}"
+                    "if(this&&this.id==='live_osc' &&cbO&&cbO.checked){if(cbM)cbM.checked=false;}"
+                    "if(m)m.style.display=(cbM&&cbM.checked)?'block':'none';"
+                    "if(o)o.style.display=(cbO&&cbO.checked)?'block':'none';"
+                    "setLiveRequired(cbM&&cbM.checked, cbO&&cbO.checked);"
+                    "}";
+    TimeConfHTML += "function chooseUploade(){"
+                    "var sel=document.querySelector('input[name=upload]:checked');"
+                    "var WIFI=document.getElementById('WIFI');"
+                    "var Lora=document.getElementById('Lora');"
+                    "var GSM=document.getElementById('GSM');"
+                    "var LIVE=document.getElementById('LIVE');"
+                    "var useNTP=document.getElementById('use_NTP');"
+                    "var noNTP=document.getElementById('no_NTP');"
+                    "hide(WIFI);hide(Lora);hide(GSM);hide(LIVE);"
+                    "if(!sel){hide(useNTP);hide(noNTP);return;}"
+                    "switch(sel.value){"
+                    " case 'WIFI': show(WIFI); show(useNTP); hide(noNTP); break;"
+                    " case 'LORA': show(Lora); hide(useNTP); show(noNTP);"
+                    "              var cb=document.getElementById('use-ntp-server'); if(cb)cb.checked=false;"
+                    "              break;"
+                    " case 'GSM' : show(GSM);  hide(useNTP); hide(noNTP); break;"
+                    " case 'LIVE': show(LIVE); show(useNTP); hide(noNTP); break;"
+                    " case 'NO'  : hide(useNTP); hide(noNTP); break;"
+                    " default    : show(useNTP); hide(noNTP);"
+                    "}"
+                    "if(sel.value!=='LIVE'){ setLiveRequired(false,false); }"
+                    "}";
+    TimeConfHTML += "document.addEventListener('DOMContentLoaded',function(){"
+                    "var cbM=document.getElementById('live_mqtt');"
+                    "var cbO=document.getElementById('live_osc');"
+                    "if(cbM)cbM.addEventListener('change',chooseLive);"
+                    "if(cbO)cbO.addEventListener('change',chooseLive);"
+                    "chooseUploade();"
+                    "chooseNTP();"
+                    "chooseLive();"
+                    "});";
     TimeConfHTML += "</script>";
 
     // Script to choose custom NTP settings
-    TimeConfHTML += "<script type='text/javascript'>";
-    TimeConfHTML += "function chooseCustomNTP() {var customNtp = document.getElementById('custom_ntp'); var ntpList = document.getElementById('ntp_list');var checkBox = document.getElementById('custom_ntp_enable');";
-    TimeConfHTML += "if (checkBox.checked == true) {customNtp.style.display = 'block'; ntpList.style.display = 'none';}";
-    TimeConfHTML += "else {customNtp.style.display = 'none'; ntpList.style.display = 'block';}}";
-    TimeConfHTML += "</script>";
+    TimeConfHTML += "<script type='text/javascript'>"
+                    "function chooseCustomNTP(){"
+                    "var customNtp=document.getElementById('custom_ntp');"
+                    "var ntpList=document.getElementById('ntp_list');"
+                    "var checkBox=document.getElementById('custom_ntp_enable');"
+                    "if(checkBox&&checkBox.checked){customNtp.style.display='block';ntpList.style.display='none';}"
+                    "else{customNtp.style.display='none';ntpList.style.display='block';}"
+                    "}"
+                    "</script>";
 
     // Script to choose NTP settings
-    TimeConfHTML += "<script type='text/javascript'>";
-    TimeConfHTML += "function chooseNTP() {var useNTP = document.getElementById('ntp_Settings');var noNTP = document.getElementById('no_NTP');var checkBox = document.getElementById('use-ntp-server');";
-    TimeConfHTML += "if (checkBox.checked == true) {useNTP.style.display = 'block';noNTP.style.display = 'none';}";
-    TimeConfHTML += "else {useNTP.style.display = 'none';noNTP.style.display = 'block';}}";
-    TimeConfHTML += "</script>";
-    TimeConfHTML += "<script type='text/javascript'>";
-    TimeConfHTML += "document.addEventListener('DOMContentLoaded', function () { chooseNTP();});";
-    TimeConfHTML += "</script>";
+    TimeConfHTML += "<script type='text/javascript'>"
+                    "function chooseNTP(){"
+                    "var useNTP=document.getElementById('ntp_Settings');"
+                    "var noNTP=document.getElementById('no_NTP');"
+                    "var checkBox=document.getElementById('use-ntp-server');"
+                    "if(checkBox&&checkBox.checked){useNTP.style.display='block';noNTP.style.display='none';}"
+                    "else{useNTP.style.display='none';noNTP.style.display='block';}"
+                    "}"
+                    "</script>";
 
-    // Script to update address select options based on I2C sensor selection
-    TimeConfHTML += "<script>";
-    TimeConfHTML += "function updateAddrSelect(sensorSelect, addrSelectId){";
-    TimeConfHTML += "let opt=sensorSelect.options[sensorSelect.selectedIndex];";
-    TimeConfHTML += "let addrs=opt.dataset.addrs?opt.dataset.addrs.split(','):[];";
-    TimeConfHTML += "let addrSelect=document.getElementById(addrSelectId);";
-    TimeConfHTML += "if(!addrSelect)return;";
-    TimeConfHTML += "let preselect=addrSelect.dataset.selectedAddr?parseInt(addrSelect.dataset.selectedAddr):-1;";
-    TimeConfHTML += "addrSelect.innerHTML='';";
-    TimeConfHTML += "addrs.forEach((a,idx)=>{";
-    TimeConfHTML += "let option=document.createElement('option');";
-    TimeConfHTML += "option.value=idx; option.text=a;";
-    TimeConfHTML += "if(idx===preselect) option.selected=true;";
-    TimeConfHTML += "addrSelect.add(option);";
-    TimeConfHTML += "});";
-    TimeConfHTML += "}";
-    TimeConfHTML += "document.addEventListener('DOMContentLoaded',()=>{";
-    TimeConfHTML += "document.querySelectorAll(\"select[id$='_addr']\").forEach(addrSelect=>{";
-    TimeConfHTML += "let sensorSelectId=addrSelect.id.replace('_addr','');";
-    TimeConfHTML += "let sensorSelect=document.getElementById(sensorSelectId);";
-    TimeConfHTML += "if(sensorSelect){updateAddrSelect(sensorSelect,addrSelect.id);}";
-    TimeConfHTML += "});";
-    TimeConfHTML += "});";
-    TimeConfHTML += "</script>";
+    // Address select helper
+    TimeConfHTML += "<script>"
+                    "function updateAddrSelect(sensorSelect,addrSelectId){"
+                    "let opt=sensorSelect.options[sensorSelect.selectedIndex];"
+                    "let addrs=opt.dataset.addrs?opt.dataset.addrs.split(','):[];"
+                    "let addrSelect=document.getElementById(addrSelectId);"
+                    "if(!addrSelect)return;"
+                    "let preselect=addrSelect.dataset.selectedAddr?parseInt(addrSelect.dataset.selectedAddr):-1;"
+                    "addrSelect.innerHTML='';"
+                    "addrs.forEach((a,idx)=>{var option=document.createElement('option');"
+                    "option.value=idx; option.text=a; if(idx===preselect)option.selected=true; addrSelect.add(option);});"
+                    "}"
+                    "document.addEventListener('DOMContentLoaded',()=>{"
+                    "document.querySelectorAll(\"select[id$='_addr']\").forEach(addrSelect=>{"
+                    "let sensorSelectId=addrSelect.id.replace('_addr','');"
+                    "let sensorSelect=document.getElementById(sensorSelectId);"
+                    "if(sensorSelect){updateAddrSelect(sensorSelect,addrSelect.id);}"
+                    "});"
+                    "});"
+                    "</script>";
 
-    TimeConfHTML += "<style>strong {color:red;}</style>";
-
+    TimeConfHTML += "<style>strong{color:red;}</style>";
     TimeConfHTML += getTemplate(HTML_STYLE);
-
     TimeConfHTML += getTemplate(HTML_HEAD_END);
-    TimeConfHTML.replace(FPSTR(T_c), "invert"); // add class str
+    TimeConfHTML.replace(FPSTR(T_c), "invert");
 
     TimeConfHTML += "<h2>Board Setup</h2>";
     TimeConfHTML += version;
     TimeConfHTML += "<BR><BR>";
     TimeConfHTML += "Board MAC Address: " + WiFi.macAddress();
     TimeConfHTML += "<BR><BR>";
-    TimeConfHTML += "<iframe name='dummyframe' id='dummyframe' style='display: none;'></iframe>";
 
-    TimeConfHTML += "<div><form action='/save-tz' target='dummyframe' method='POST'><legend>Please select your data upload method:</legend>";
+    TimeConfHTML += "<div><form action='/save-tz' method='POST'> <legend>Please select your data upload method:</legend>";
     TimeConfHTML += "<table style='width:100%'><tr>";
 
     TimeConfHTML += "<td><input type='radio' id='wificheck' name='upload' value='WIFI' onchange='chooseUploade()' ";
     TimeConfHTML += (upload == "WIFI") ? "checked " : "";
-    TimeConfHTML += "/><label for='upload1'> WiFi</label></td>";
+    TimeConfHTML += "/><label for='wificheck'> WiFi</label></td>";
 
     TimeConfHTML += "<td><input type='radio' id='loracheck' name='upload' value='LORA' onchange='chooseUploade()' ";
     TimeConfHTML += (upload == "LORA") ? "checked " : "";
-    TimeConfHTML += "/><label for='upload2'> LoRa</label></td>";
+    TimeConfHTML += "/><label for='loracheck'> LoRa</label></td>";
 
     TimeConfHTML += "<td><input type='radio' id='nouploadcheck' name='upload' value='NO' onchange='chooseUploade()' ";
     TimeConfHTML += (upload == "NO") ? "checked " : "";
-    TimeConfHTML += "/><label for='upload3'> NO upload</label></td>";
+    TimeConfHTML += "/><label for='nouploadcheck'> NO upload</label></td>";
 
-    // TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='upload4'> GSM</label></td>";
+    TimeConfHTML += "<td><input type='radio' id='livecheck' name='upload' value='LIVE' onchange='chooseUploade()' ";
+    TimeConfHTML += (upload == "LIVE") ? "checked " : "";
+    TimeConfHTML += "/><label for='livecheck'> LIVE</label></td>";
+
+    // TimeConfHTML += "<td><input type='radio' id='gsmcheck' name='upload' value='GSM' onchange='chooseUploade()' /><label for='gsmcheck'> GSM</label></td>";
     TimeConfHTML += "</tr></table><br>";
 
-    if (useBattery)
-    {
-      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1' checked /><label for='battery'> powerd by battery</label><br>";
-    }
-    else
-    {
-      TimeConfHTML += "<input type='checkbox' id='battery' name='battery' value='1'/><label for='battery'> powerd by battery</label><br>";
-    }
+    // power/display/log options
+    TimeConfHTML += (useBattery ? "<input type='checkbox' id='battery' name='battery' value='1' checked />"
+                                : "<input type='checkbox' id='battery' name='battery' value='1'/>");
+    TimeConfHTML += "<label for='battery'> powerd by battery</label><br>";
 
-    if (useDisplay)
-    {
-      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1' checked /><label for='display'> show display</label><br>";
-    }
-    else
-    {
-      TimeConfHTML += "<input type='checkbox' id='display' name='display' value='1'/><label for='display'> show display</label><br>";
-    }
+    TimeConfHTML += (useDisplay ? "<input type='checkbox' id='display' name='display' value='1' checked />"
+                                : "<input type='checkbox' id='display' name='display' value='1'/>");
+    TimeConfHTML += "<label for='display'> show display</label><br>";
 
-    if (saveDataSDCard)
-    {
-      TimeConfHTML += "<input type='checkbox' id='logtosd' name='logtosd' value='1' checked /><label for='logtosd'> Log to SD Card</label><br>";
-    }
-    else
-    {
-      TimeConfHTML += "<input type='checkbox' id='logtosd' name='logtosd' value='1'/><label for='logtosd'> Log to SD Card</label><br>";
-    }
+    TimeConfHTML += (saveDataSDCard ? "<input type='checkbox' id='logtosd' name='logtosd' value='1' checked />"
+                                    : "<input type='checkbox' id='logtosd' name='logtosd' value='1'/>");
+    TimeConfHTML += "<label for='logtosd'> Log to SD Card</label><br>";
 
-    TimeConfHTML += "<BR><BR><label for='up_interval'>Upload Interval:</label>";
-    TimeConfHTML += "<select id='up_interval' name='up_interval'>";
-    TimeConfHTML += "<option value=2>2 min</option>";
-    TimeConfHTML += "<option value=10>10 min</option>";
-    TimeConfHTML += "<option value=30>30 min</option>";
-    TimeConfHTML += "<option value=60>60 min</option>";
-    TimeConfHTML += "</select><br>";
+    TimeConfHTML += "<BR><label for='up_interval'>Upload Interval:</label>";
+    TimeConfHTML += "<select id='up_interval' name='up_interval'>"
+                    "<option value=2>2 min</option>"
+                    "<option value=10>10 min</option>"
+                    "<option value=30>30 min</option>"
+                    "<option value=60>60 min</option>"
+                    "</select>";
 
-    TimeConfHTML += "</div><BR><div><BR>";
+    TimeConfHTML += "</div><BR><div>";
 
-    TimeConfHTML += "<b>WiFi Upload Data</b>";
-    TimeConfHTML += "<div><label for='BoardID'>Board ID:</label><input type='text' id='BoardID' name='BoardID' pattern='^(1[0-9]{3}|199[0-9])$' title='Enter 4 digit Board ID' value=" + String(boardID) + " required>";
-    TimeConfHTML += "<label for='API_KEY'>API KEY:</label><input type='text' name='API_KEY' pattern='^[A-Za-z0-9]{32}$' title=' Enter Bearer token' value=" + API_KEY + " required>";
+    // ===== WIFI (wrapped so we can hide it) =====
+    TimeConfHTML += "<div id='WIFI' style='display:none'><b>WiFi Upload Data</b>";
+    TimeConfHTML += "<div><label for='BoardID'>Board ID:</label>"
+                    "<input type='text' id='BoardID' name='BoardID' pattern='^(1[0-9]{3}|199[0-9])$' "
+                    "title='Enter 4 digit Board ID' value=" +
+                    String(boardID) + " required>";
+    TimeConfHTML += "<label for='API_KEY'>API KEY:</label>"
+                    "<input type='text' id='API_KEY' name='API_KEY' pattern='^[A-Za-z0-9]{32}$' "
+                    "title=' Enter Bearer token' value=" +
+                    API_KEY + " required></div></div>";
 
-    TimeConfHTML += "<div id='Lora' style='display:none'><br><BR><b>LoRa TTN Data</b>";
-
-    TimeConfHTML += "<BR><strong>" + lora_fqz + "</strong><BR><BR>";
-
+    // ===== LORA =====
+    TimeConfHTML += "<div id='Lora' style='display:none'><BR><b>LoRa TTN Data</b>";
+    TimeConfHTML += "<BR><strong>" + lora_fqz + "</strong><BR>";
     TimeConfHTML += "<label for='OTAA_APPEUI'>OTAA_APPEUI:</label><input type='text' id='OTAA_APPEUI' name='OTAA_APPEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_APPEUI + " required>";
     TimeConfHTML += "<label for='OTAA_DEVEUI'>OTAA_DEVEUI:</label><input type='text' id='OTAA_DEVEUI' name='OTAA_DEVEUI' pattern='^[0-9A-F]{16}$' title='Enter 8 hexadecimal digits without any prefix or separator' value=" + OTAA_DEVEUI + " required>";
     TimeConfHTML += "<label for='OTAA_APPKEY'>OTAA_APPKEY:</label><input type='text' id='OTAA_APPKEY' name='OTAA_APPKEY' pattern='^[0-9A-F]{32}$' title='Enter 16 hexadecimal digits without any prefix or separator' value=" + OTAA_APPKEY + " required>";
     TimeConfHTML += "<BR><input type='checkbox' id='ADR' name='ADR' value='1'/><label for='ADR'> use ADR</label>";
     TimeConfHTML += "</div><BR>";
 
-    TimeConfHTML += "<div id='GSM' style='display:none'><br><BR><b>GSM Data</b>";
+    // ===== GSM =====
+    TimeConfHTML += "<div id='GSM' style='display:none'><BR><b>GSM Data</b>";
     TimeConfHTML += "<label for='apn'>APN:</label><input type='text' id='apn' name='apn' value=" + apn + " required>";
     TimeConfHTML += "<label for='gprs_user'>GPRS User:</label><input type='text' id='gprs_user' name='gprs_user' value=" + gprs_user + " required>";
     TimeConfHTML += "<label for='gprs_pass'>GPRS Password:</label><input type='password' id='gprs_pass' name='gprs_pass' value=" + gprs_pass + " required>";
     TimeConfHTML += "</div><BR>";
 
-    //------------- Start Connectors ------- //
+    // ===== LIVE (with MQTT / OSC) =====
+    TimeConfHTML += "<div id='LIVE' style='display:none'><b>Live Output</b><br>";
+    TimeConfHTML += "<input type='checkbox' id='live_mqtt' name='live_mqtt' value='1' ";
+    TimeConfHTML += (upload == "LIVE" && live_mode == "MQTT") ? "checked" : "";
+    TimeConfHTML += "><label for='live_mqtt'> MQTT</label>&nbsp;&nbsp;";
+    TimeConfHTML += "<input type='checkbox' id='live_osc' name='live_osc' value='1' ";
+    TimeConfHTML += (upload == "LIVE" && live_mode == "OSC") ? "checked" : "";
+    TimeConfHTML += "><label for='live_osc'> OSC</label><br>";
 
+    TimeConfHTML +=
+        "<div id='LIVE_MQTT' style='display:none'>"
+        "<label for='mqtt_server_ip'>MQTT Server IP:</label>"
+        "<input type='text' id='mqtt_server_ip' name='mqtt_server_ip' "
+        "pattern='^(?:\\d{1,3}\\.){3}\\d{1,3}$' title='IPv4 address' "
+        "value='" +
+        mqtt_server_ip + "' required><br>"
+
+                         "<label for='mqtt_topic'>MQTT Topic:</label>"
+                         "<input type='text' id='mqtt_topic' name='mqtt_topic' "
+                         "pattern='^[A-Za-z0-9_\\-/]{1,128}$' title='Topic (A–Z a–z 0–9 _ - /)' "
+                         "value='" +
+        mqtt_topic + "' required><br>"
+
+                     // --- Port Preset + Custom Port ---
+                     "<label for='mqtt_port'>MQTT Port:</label>"
+                     "<select id='mqtt_port_preset' "
+                     "onchange='var ip=document.getElementById(\"mqtt_port\");"
+                     "if(this.value!=\"custom\"&&ip){ip.value=this.value;}'>"
+                     "<option value='1883' " +
+        String(mqtt_port == 1883 ? "selected" : "") + ">1883 (Plain)</option>"
+                                                      "<option value='443' " +
+        String(mqtt_port == 443 ? "selected" : "") + ">443 (TLS/WebSockets)</option>"
+                                                     "<option value='custom' " +
+        String((mqtt_port != 1883 && mqtt_port != 443) ? "selected" : "") + ">custom</option>"
+                                                                            "</select> "
+                                                                            "<input type='number' id='mqtt_port' name='mqtt_port' min='1' max='65535' "
+                                                                            "value='" +
+        String(mqtt_port) + "' required>"
+                            "<div class='muted'>Common: 1883 (Plain MQTT), 443 (MQTT over WSS/TLS).</div>"
+                            "</div>";
+
+    TimeConfHTML += "<div id='LIVE_OSC' style='display:none'>"
+                    "<label for='osc_ip'>OSC IP:</label>"
+                    "<input type='text' id='osc_ip' name='osc_ip' "
+                    "pattern='^(?:\\d{1,3}\\.){3}\\d{1,3}$' title='IPv4 address' "
+                    "value='" +
+                    osc_ip + "' required><br>"
+                             "<label for='osc_port'>OSC Port:</label>"
+                             "<input type='number' id='osc_port' name='osc_port' min='1' max='65535' "
+                             "value='" +
+                    String(osc_port) + "' required>"
+                                       "</div>";
+
+    TimeConfHTML += "</div><br>";
+
+    // ------------- Start Connectors -------
     TimeConfHTML += generateI2CTable();
 
     TimeConfHTML += "<h2>Connectors:</h2>";
 
     TimeConfHTML += "<table style='width:100%'><tbody><tr><td colspan='2'><h3>I2C Connectors</h3></td></tr><tr>";
-
     TimeConfHTML += "<td><label for='i2c_1'>I2C_1</label>";
     TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[0].sensorIndex), "i2c_1");
-
     TimeConfHTML += "<td><label for='i2c_3'>I2C_3</label>";
     TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[1].sensorIndex), "i2c_3");
-
     TimeConfHTML += "</tr><tr>";
-
     TimeConfHTML += "<td><label for='i2c_2'>I2C_2</label>";
     TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[2].sensorIndex), "i2c_2");
-
     TimeConfHTML += "<td><label for='i2c_4'>I2C_4</label>";
     TimeConfHTML += generateDropdown("I2C", int(I2C_con_table[3].sensorIndex), "i2c_4");
-
     TimeConfHTML += "</tr></tbody></table>";
 
     TimeConfHTML += "<table style='width:100%'><tbody><tr><td><h3>ADC Connectors</h3></td>";
     TimeConfHTML += "<td><h3>1-Wire Connectors</h3></td></tr><tr>";
-
     TimeConfHTML += "<td><label for='adc_1'>ADC_1</label>";
     TimeConfHTML += generateDropdown("ADC", ADC_con_table[0], "adc_1");
-
     TimeConfHTML += "<td><label for='onewire_1'>1-Wire_1</label>";
     TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[0], "onewire_1");
-
     TimeConfHTML += "</tr><tr><td><label for='adc_2'>ADC_2</label>";
     TimeConfHTML += generateDropdown("ADC", ADC_con_table[1], "adc_2");
-
     TimeConfHTML += "<td><label for='onewire_2'>1-Wire_2</label>";
     TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[1], "onewire_2");
-
     TimeConfHTML += "</tr><tr><td><label for='adc_3'>ADC_3</label>";
     TimeConfHTML += generateDropdown("ADC", ADC_con_table[2], "adc_3");
-
     TimeConfHTML += "<td><label for='onewire_3'>1-Wire_3</label>";
     TimeConfHTML += generateDropdown("ONE_WIRE", OneWire_con_table[2], "onewire_3");
-
     TimeConfHTML += "</tr></tbody><label for='I2C_5V'>I2C_5V Con</label>";
     TimeConfHTML += generateDropdown("I2C_5V", int(I2C_5V_con_table[0].sensorIndex), "I2C_5V");
     TimeConfHTML += " </table><BR>";
@@ -423,7 +530,6 @@ namespace WiFiManagerNS
     String systimeStr = getSystimeStr();
 
     TimeConfHTML += "<label for='ntp-server'>System Time ";
-
     TimeConfHTML += "<input readonly style=width:auto name='system-time' type='datetime-local' value='" + systimeStr + "'>";
     TimeConfHTML += " <button onclick=location.reload() style=width:auto type=button> Refresh </button></label><br>";
 
@@ -453,8 +559,9 @@ namespace WiFiManagerNS
 
     TimeConfHTML += "<label for='ntp-server'>Server:</label>";
 
-    TimeConfHTML += "<div id='custom_ntp' style='display:none;'>please enter a valide NTP Server IP Address:<br><input type='text' pattern='[A-Za-z0-9\\\\.]{1,15}'";
-    TimeConfHTML += "title='Please enter a valid NTP server address' name='custom_ntp' value='" + customNTPaddress + "'></div>";
+    TimeConfHTML += "<div id='custom_ntp' style='display:none;'>please enter a valide NTP Server IP Address:<br><input type='text' pattern='[A-Za-z0-9\\\\.]{1,15}'"
+                    "title='Please enter a valid NTP server address' name='custom_ntp' value='" +
+                    customNTPaddress + "'></div>";
 
     TimeConfHTML += "<div id='ntp_list'><select id='ntp-server-list' name='ntp-server'>";
     size_t servers_count = NTP::NTP_Servers.size();
@@ -470,22 +577,19 @@ namespace WiFiManagerNS
     TimeConfHTML += "</select></div><br>";
 
     TimeConfHTML += "<label for='ntp-server-interval'>Sync interval:</label>";
-    TimeConfHTML += "<select id='ntp-server-interval' name='ntp-server-interval'>";
-    TimeConfHTML += "<option value=60>Hourly</option>";
-    TimeConfHTML += "<option value=14400>Daily</option>";
-    TimeConfHTML += "<option value=10080>Weekly</option>";
-    TimeConfHTML += "</select></div><br>";
+    TimeConfHTML += "<select id='ntp-server-interval' name='ntp-server-interval'>"
+                    "<option value=60>Hourly</option>"
+                    "<option value=14400>Daily</option>"
+                    "<option value=10080>Weekly</option>"
+                    "</select></div><br>";
 
-    TimeConfHTML += "</div>";
+    TimeConfHTML += "</div>"; // use_NTP
 
     TimeConfHTML += "<button type=submit>Submit</button>";
     TimeConfHTML += "</form></div><BR>";
     TimeConfHTML += getTemplate(HTML_END);
 
     _wifiManager->server->send_P(200, "text/html", TimeConfHTML.c_str(), TimeConfHTML.length());
-
-    // Serial.print(TimeConfHTML); // debug HTML output
-
     TimeConfHTML = String();
   }
 
@@ -493,6 +597,15 @@ namespace WiFiManagerNS
   {
     bool success = true;
     bool _NTPEnabled = NTPEnabled;
+
+#if DEBUG_PRINT
+    Serial.println("=== RECEIVED FORM DATA ===");
+    for (int i = 0; i < _wifiManager->server->args(); i++)
+    {
+      Serial.println("Arg " + String(i) + ": " + _wifiManager->server->argName(i) + " = '" + _wifiManager->server->arg(i) + "'");
+    }
+    Serial.println("=== END FORM DATA ===");
+#endif
 
     Serial.println("[HTTP] handle route Values");
 
@@ -565,62 +678,54 @@ namespace WiFiManagerNS
         int serverInterval = atoi(NtpServerInterval.c_str());
         switch (serverInterval)
         {
-        case 60:
-        case 14400:
-        case 10080:
+        case 60: // 1 hour
+          serverInterval = 60;
+          break;
+        case 1440: // 24h
+          serverInterval = 1440;
+          break;
+        case 10080: // 1 week
+          serverInterval = 10080;
           break;
         default:
-          serverInterval = 14400;
+          serverInterval = 1440;
         }
         NTP::setSyncDelay(serverInterval);
       }
     }
 
     handleTimezoneSettings();
-    handleBoardSettings();
-    handleI2CSettings();
-    handleADCSettings();
-    handleOneWireSettings();
-    handlePeripheralSettings();
-    handleUploadSettings();
-    handleLoraSettings();
-    handleGPRSSettings();
-    handleTimeSetting();
 
-    updateRtcStatus();
+    handleBoardSettings();
+
+    handleI2CSettings();
+
+    handleADCSettings();
+
+    handleOneWireSettings();
+
+    handlePeripheralSettings();
+
+    handleLoraSettings();
+
+    handleLiveSettings();
 
     SPI_con_table[0] = NO;
     EXTRA_con_table[0] = NO;
     EXTRA_con_table[1] = NO;
 
+    handleUploadSettings();
+
+    updateRtcStatus();
+    handleTimeSetting();
+    delay(50);
+
     save_Connectors();
     save_Config();
-
     delay(200);
 
-    String SavePage;
-
-    SavePage += getTemplate(HTML_HEAD_START);
-    SavePage.replace(FPSTR(T_v), "TeleAgriCulture Board Setup");
-    SavePage += custom_Title_Html;
-    SavePage += "<BR><BR><div class='msg S'<h2>Setup Saved</h2>";
-    SavePage += "<BR>reseting Board";
-
-    SavePage += FPSTR(HTTP_END);
-
-    _wifiManager->server->sendHeader(FPSTR(HTTP_HEAD_CORS), FPSTR(HTTP_HEAD_CORS_ALLOW_ALL)); // @HTTPHEAD send cors
-    _wifiManager->server->send(200, FPSTR(HTTP_HEAD_CT), SavePage);
-    
-    //____________________________________________________________________________________________
-
-    // const char *successResp = "<script>parent.location.href = '/';</script>";
-    // const char *failureResp = "<script>parent.alert('fail');</script>";
-
-    // _wifiManager->server->send(200, "text/html", success ? successResp : failureResp);
-    //_wifiManager->server->send_P(200, "text/html", SavePage.c_str(), SavePage.length());
-
-    delay(200);
-    ESP.restart();
+    _wifiManager->server->sendHeader("Location", "/saved", true);
+    _wifiManager->server->send(303, "text/plain", "");
   }
 
   void bindServerCallback()
@@ -628,6 +733,274 @@ namespace WiFiManagerNS
     _wifiManager->server->on("/custom", handleRoute);
     _wifiManager->server->on("/save-tz", handleValues);
     _wifiManager->server->on("/favicon.ico", handleFavicon); // changed to imbedded png/base64 link
+
+    _wifiManager->server->on("/saved", HTTP_GET, handleSavedPage);
+    _wifiManager->server->on("/reboot", HTTP_POST, handleReboot);
+  }
+
+  // --- saved settings page ---
+  void handleSavedPage()
+  {
+    String html;
+    html.reserve(8192);
+
+    html += WiFiManagerNS::getTemplate(WiFiManagerNS::HTML_HEAD_START);
+    html.replace(FPSTR(T_v), "Board Settings Saved");
+    html += WiFiManagerNS::getTemplate(WiFiManagerNS::HTML_STYLE);
+    html += F(
+        "<style>"
+        "body{background:#111;color:#eaeaea}"
+        ".wrap{max-width:900px;margin:36px auto;padding:0 16px}"
+        ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}"
+        ".card{background:#1b1b1b;border:1px solid #2b2b2b;border-radius:12px;overflow:hidden}"
+        ".card-h{font-weight:600;padding:10px 12px;border-bottom:1px solid #2b2b2b}"
+        ".card-b{padding:10px 12px}"
+        ".kv{display:flex;justify-content:space-between;gap:12px;margin:6px 0}"
+        "code{background:#0e0e0e;border:1px solid #2b2b2b;padding:2px 6px;border-radius:6px}"
+        ".tag{border:1px solid #444;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px}"
+        ".tag.on{border-color:#2ea043}"
+        ".tag.off{border-color:#a12d2f}"
+        ".btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}"
+        ".btn{appearance:none;border:1px solid #3b82f6;background:#2563eb;color:#fff;"
+        "padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block}"
+        ".btn.secondary{background:#0b0b0b;border-color:#434343;color:#e5e5e5}"
+        "pre{white-space:pre-wrap;background:#0e0e0e;border:1px solid #2b2b2b;padding:12px;border-radius:8px;"
+        "max-height:300px;overflow:auto}"
+        "h1{font-size:20px;margin:0 0 10px}"
+        "h2{font-size:16px;margin:22px 0 10px}"
+        ".muted{font-size:12px;color:#9aa;margin-top:8px}"
+        "</style>");
+
+    html += WiFiManagerNS::getTemplate(WiFiManagerNS::HTML_HEAD_END);
+    html.replace(FPSTR(T_c), "invert");
+    html += custom_Title_Html;
+    html += F("<div class='wrap'>");
+    html += F("<h1>Settings applied</h1>");
+    html += F("<p>reboot or back to main menu</p>");
+
+    html += F("<h2>Data stored:</h2><pre>");
+    html += "BoardID = " + String(boardID) + "\n";
+    html += "upload = " + upload + "\n";
+
+    if (upload == "WIFI")
+      html += "API Key = " + API_KEY + "\n";
+
+    if (upload == "LORA")
+    {
+      html += "OTAA_APPEUI = " + OTAA_APPEUI + "\n";
+      html += "OTAA_DEVEUI = " + OTAA_DEVEUI + "\n";
+      html += "OTAA_APPKEY = " + OTAA_APPKEY + "\n";
+    }
+
+    if (upload == "LIVE")
+    {
+      html += "live_mode = " + live_mode + "\n";
+      if (live_mode == "MQTT")
+      {
+        html += "mqtt_server_ip = " + mqtt_server_ip + "\n";
+        html += "mqtt_topic = " + mqtt_topic + "\n";
+        html += "mqtt_port = " + String(mqtt_port) + "\n";
+      }
+      else if (live_mode == "OSC")
+      {
+        html += "osc_ip = " + osc_ip + "\n";
+        html += "osc_port = " + String(osc_port) + "\n";
+      }
+      else
+      {
+        html += "live_mode = (none)\n";
+      }
+    }
+
+    html += "display = " + String(useDisplay ? "yes" : "no") + "\n";
+    html += "battery = " + String(useBattery ? "yes" : "no") + "\n";
+    html += "SD Card = " + String(useSDCard ? "yes" : "no") + "\n";
+
+    html += "upload interval = " + String(upload_interval) + " min\n";
+    html += "RTC found = " + String(rtcEnabled ? "yes" : "no") + "\n";
+
+    html += "NTP = " + String(WiFiManagerNS::NTPEnabled ? "yes" : "no") + "\n";
+    html += "TZ = " + String(TZ::tzName) + "\n";
+    html += "</pre>";
+
+    beginSensorsCard(html);
+
+    // I2C_1..4
+    for (int i = 0; i < 4; ++i)
+    {
+      if (I2C_con_table[i].sensorIndex >= 0)
+      {
+        appendSensorCard(html, "I2C_" + String(i + 1), "I2C",
+                         I2C_con_table[i].sensorIndex,
+                         I2C_con_table[i].addrIndex);
+      }
+    }
+
+    // I2C_5V
+    if (I2C_5V_con_table[0].sensorIndex >= 0)
+    {
+      appendSensorCard(html, "I2C_5V", "I2C_5V",
+                       I2C_5V_con_table[0].sensorIndex,
+                       I2C_5V_con_table[0].addrIndex);
+    }
+
+    // ADC_1..3
+    for (int i = 0; i < 3; ++i)
+    {
+      if (ADC_con_table[i] >= 0)
+      {
+        appendSensorCard(html, "ADC_" + String(i + 1), "ADC",
+                         ADC_con_table[i], -1);
+      }
+    }
+
+    // 1-Wire_1..3
+    for (int i = 0; i < 3; ++i)
+    {
+      if (OneWire_con_table[i] >= 0)
+      {
+        appendSensorCard(html, "1-W_" + String(i + 1), "ONE_WIRE",
+                         OneWire_con_table[i], -1);
+      }
+    }
+
+    endSensorsCard(html);
+
+    // Buttons
+    html += F(
+        "<div class='btns'>"
+        "<form action='/reboot' method='POST' style='margin:0'>"
+        "<button class='btn' type='submit'>Reboot</button>"
+        "</form>"
+        "<a class='btn secondary' href='/'>Back to Main Menu</a>"
+        "</div>"
+        "<div class='muted'>"
+        "I2C-Status shows if address was found"
+        "</div>");
+
+    html += F("</div>"); // .wrap
+    html += WiFiManagerNS::getTemplate(WiFiManagerNS::HTML_END);
+
+    WiFiManagerNS::_wifiManager->server->send_P(200, "text/html", html.c_str(), html.length());
+  }
+
+  // --- Reboot-Handler ---
+  void handleReboot()
+  {
+    WiFiManagerNS::_wifiManager->server->send(200, "text/plain", "Rebooting...");
+    WiFiManagerNS::_wifiManager->server->client().flush();
+    delay(250);
+    ESP.restart();
+  }
+
+  static inline const Sensor *findSensorByTypeIndex(const String &con_typ, int selectedIndex)
+  {
+    if (selectedIndex < 0)
+      return nullptr;
+    for (int i = 0; i < SENSORS_NUM; ++i)
+    {
+      // In generateDropdown: optVal = sensor_id - 1  -> wir matchen genauso
+      if (allSensors[i].con_typ == con_typ && (int(allSensors[i].sensor_id) - 1) == selectedIndex)
+      {
+        return &allSensors[i];
+      }
+    }
+    return nullptr;
+  }
+
+  static void appendSensorCard(String &html, const String &title,
+                               const String &con_typ, int selectedIndex, int addrIndex)
+  {
+    const auto *s = findSensorByTypeIndex(con_typ, selectedIndex);
+    if (!s)
+      return;
+
+    // Schönere Typanzeige
+    String typ = con_typ;
+    if (con_typ == "ONE_WIRE")
+      typ = "1-Wire";
+    else if (con_typ == "I2C_5V")
+      typ = "I2C";
+
+    String addr = "";
+    String status = "&ndash;";
+
+    if ((con_typ == "I2C" || con_typ == "I2C_5V") && addrIndex >= 0)
+    {
+      // bis zu 2 mögliche I2C-Adressen
+      for (int j = 0, k = 0; j < 2; ++j)
+      {
+        if (s->possible_i2c_add[j].length() > 0)
+        {
+          if (k == addrIndex)
+          {
+            addr = s->possible_i2c_add[j];
+            break;
+          }
+          ++k;
+        }
+      }
+      if (addr.length() == 0)
+        addr = "?";
+      bool present = WiFiManagerNS::isFound(addr);
+      status = String("<span class='tag ") + (present ? "on" : "off") + "'>" + (present ? "online" : "offline") + "</span>";
+    }
+
+    html += "<tr>";
+    html += "<td>" + title + "</td>";
+    html += "<td>" + typ + "</td>";
+    html += "<td>" + s->sensor_name + "</td>";
+    html += "<td>";
+    html += (addr.length() ? "<code>" + addr + "</code>" : "&ndash;");
+    html += "</td>";
+    html += "<td>" + status + "</td>";
+    html += "</tr>";
+  }
+
+  static inline bool isValidIPv4(const String &s)
+  {
+    int dot = 0, part = -1, val = 0;
+    for (size_t i = 0; i < s.length(); ++i)
+    {
+      char c = s[i];
+      if (c == '.')
+      {
+        if (part < 0)
+          return false; // keine Ziffer vor dem Punkt
+        if (val > 255)
+          return false;
+        ++dot;
+        part = -1;
+        val = 0;
+        if (dot > 3)
+          return false;
+        continue;
+      }
+      if (c < '0' || c > '9')
+        return false;
+      if (part < 0)
+        part = 0;
+      val = val * 10 + (c - '0');
+      if (val > 999)
+        return false; // leichtes Fast-Fail
+    }
+    if (dot != 3 || part < 0 || val > 255)
+      return false;
+    return true;
+  }
+
+  static inline bool isValidTopic(const String &s)
+  {
+    if (s.length() < 1 || s.length() > 128)
+      return false;
+    for (size_t i = 0; i < s.length(); ++i)
+    {
+      char c = s[i];
+      // Erlaubt: Buchstaben, Ziffern, '/', '-', '_'
+      if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '/' || c == '-' || c == '_'))
+        return false;
+    }
+    return true;
   }
 
   // --- Settings Handlers ---
@@ -724,47 +1097,158 @@ namespace WiFiManagerNS
     {
       upload_interval = getIntArg("up_interval");
     }
-    upload = getStringArg("upload", upload);
+
+    if (_wifiManager->server->hasArg("upload"))
+    {
+      upload = getStringArg("upload");
+    }
+
+    if (_wifiManager->server->hasArg("API_KEY"))
+    {
+      API_KEY = getStringArg("API_KEY").c_str();
+    }
+    if (_wifiManager->server->hasArg("anonym"))
+    {
+      anonym = getStringArg("anonym").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("apn"))
+    {
+      apn = getStringArg("apn").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("gprs_user"))
+    {
+      gprs_user = getStringArg("gprs_user").c_str();
+    }
+
+    if (_wifiManager->server->hasArg("gprs_pass"))
+    {
+      gprs_pass = getStringArg("gprs_pass").c_str();
+    }
+
+    Serial.println("Upload Settings done");
   }
 
   void handleLoraSettings()
   {
     lora_ADR = getBoolArg("ADR");
 
+    Serial.println("DEVEUI Settings handle");
+
     if (_wifiManager->server->hasArg("OTAA_DEVEUI"))
     {
-      OTAA_DEVEUI = getStringArg("OTAA_DEVEUI").c_str();
+      OTAA_DEVEUI = getStringArg("OTAA_DEVEUI");
       loraChanged = true;
     }
+    Serial.println("APPEUI Settings handle");
+
     if (_wifiManager->server->hasArg("OTAA_APPEUI"))
     {
-      OTAA_APPEUI = getStringArg("OTAA_APPEUI").c_str();
+      OTAA_APPEUI = getStringArg("OTAA_APPEUI");
       loraChanged = true;
     }
+    Serial.println("APPKEY Settings handle");
+
     if (_wifiManager->server->hasArg("OTAA_APPKEY"))
     {
-      OTAA_APPKEY = getStringArg("OTAA_APPKEY").c_str();
+      OTAA_APPKEY = getStringArg("OTAA_APPKEY");
       loraChanged = true;
     }
-  }
-
-  void handleGPRSSettings()
-  {
-    API_KEY = getStringArg("API_KEY").c_str();
-    anonym = getStringArg("ANONYMUS").c_str();
-    user_CA = getStringArg("certificate").c_str();
-    apn = getStringArg("apn").c_str();
-    gprs_user = getStringArg("gprs_user").c_str();
-    gprs_pass = getStringArg("gprs_pass").c_str();
   }
 
   void handleTimeSetting()
   {
     if (_wifiManager->server->hasArg("set-time"))
     {
-      setTime_value = getStringArg("set-time").c_str();
-      setRTCfromConfigPortal(setTime_value.c_str(), timeZone.c_str());
+      String sv = getStringArg("set-time");
+      if (sv.length() >= 16)
+      { // "YYYY-MM-DDTHH:MM"
+        setRTCfromConfigPortal(sv, timeZone);
+      }
     }
+  }
+
+  void handleLiveSettings()
+  {
+    // Default: keine Auswahl
+    String mode;
+
+    const bool m_checked = getBoolArg("live_mqtt");
+    const bool o_checked = getBoolArg("live_osc");
+
+    // Mutual exclusivity: MQTT priorisieren, falls beide gesetzt
+    if (m_checked)
+      mode = "MQTT";
+    else if (o_checked)
+      mode = "OSC";
+    else
+    {
+      return;
+    }
+
+    if (mode == "MQTT")
+    {
+      const String ip = getStringArg("mqtt_server_ip", mqtt_server_ip);
+      const String topic = getStringArg("mqtt_topic", mqtt_topic);
+
+      int m_port = _wifiManager->server->hasArg("mqtt_port")
+                       ? _wifiManager->server->arg("mqtt_port").toInt()
+                       : static_cast<int>(mqtt_port);
+
+      if (!WiFiManagerNS::isValidIPv4(ip))
+      {
+        Serial.println("[LIVE] Invalid MQTT IP, keeping previous");
+      }
+      else
+      {
+        mqtt_server_ip = ip;
+      }
+
+      if (!WiFiManagerNS::isValidTopic(topic))
+      {
+        Serial.println("[LIVE] Invalid MQTT topic, keeping previous");
+      }
+      else
+      {
+        mqtt_topic = topic;
+      }
+
+      if (m_port < 1 || m_port > 65535)
+      {
+        Serial.println("[LIVE] Invalid MQTT port, keeping previous");
+      }
+      else
+      {
+        mqtt_port = static_cast<uint16_t>(m_port);
+      }
+
+      live_mode = "MQTT";
+      return;
+    }
+
+    // == OSC ==
+    const String ipStr = getStringArg("osc_ip", osc_ip);
+
+    int port = _wifiManager->server->hasArg("osc_port")
+                   ? _wifiManager->server->arg("osc_port").toInt()
+                   : static_cast<int>(osc_port);
+
+    if (!WiFiManagerNS::isValidIPv4(ipStr))
+    {
+      Serial.println("[LIVE] Invalid OSC IP, keeping previous");
+    }
+    if (port < 1 || port > 65535)
+    {
+      Serial.println("[LIVE] Invalid OSC port, keeping previous");
+    }
+    else
+    {
+      osc_port = static_cast<uint16_t>(port);
+      osc_ip = ipStr;
+    }
+
+    live_mode = "OSC";
   }
 
   /*******************DropDown******************************************************************* */
@@ -890,9 +1374,9 @@ namespace WiFiManagerNS
         }
       }
     }
-
-    digitalWrite(SW_3V3, LOW);
-    digitalWrite(SW_5V, LOW);
+    Wire.endTransmission();
+    // digitalWrite(SW_3V3, LOW);
+    // digitalWrite(SW_5V, LOW);
 
     if (count == 0)
     {

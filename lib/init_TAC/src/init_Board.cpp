@@ -34,6 +34,7 @@
 #include <RTClib.h>
 
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
@@ -48,6 +49,9 @@
 #include <Button.h>
 #include <Ticker.h>
 
+#include <ArduinoOSCWiFi.h>
+#include <PubSubClient.h>
+
 #include <Adafruit_GFX.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Adafruit_ST7735.h>
@@ -55,7 +59,7 @@
 #include <ui_functions.h>
 #include <def_Board.h>
 #include <web_functions.h>
-
+#include "mqtt_support.h"
 
 // ------------------- RTC Variablen -------------------
 RTC_DATA_ATTR int bootCount = 0;
@@ -123,7 +127,6 @@ Button downButton(RIGHT_BUTTON_PIN);
 int backlight_pwm = 250;
 bool displayRefresh = true;
 
-
 bool portalRunning = false;
 bool _enteredConfigMode = false;
 bool connectorsSaved = false;
@@ -145,17 +148,21 @@ bool freshBoot = true;
 
 bool sendDataWifi = false;
 bool sendDataLoRa = false;
+bool sendDataMQTT = false;
+bool sendDataOSC = false;
 bool no_upload = false;
 bool useSDCard = false;
+bool liveData = false;
+bool useOSC = false;
+bool useMQTT = false;
 
 double vs[101] = {0};
-
 
 // ------------------- Funktionen -------------------
 
 void initBoard()
 {
-    // reset Pins after holding them during deep sleep
+   // reset Pins after holding them during deep sleep
    gpio_reset_pin(GPIO_NUM_0);
    gpio_reset_pin((gpio_num_t)SW_3V3);
    gpio_reset_pin((gpio_num_t)SW_5V);
@@ -176,8 +183,8 @@ void initBoard()
 
    delay(1000); // for debugging in screen
 
-   //Serial.setTxTimeoutMs(5); // set USB CDC Time TX // not relevant anymore ?!?
-   Serial.begin(115200);     // start Serial for debuging
+   // Serial.setTxTimeoutMs(5); // set USB CDC Time TX // not relevant anymore ?!?
+   Serial.begin(115200); // start Serial for debuging
 
    spi = new SPIClass(HSPI);
    spi->begin(TFT_SCLK, TFT_MISO, TFT_MOSI, SPI_CON_CS);
@@ -451,11 +458,11 @@ int getBatteryChargeLevel()
 
 float getBatteryVoltage()
 {
-    uint32_t raw = adc1_get_raw(ADC1_CHANNEL_3);
-    uint32_t millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
-    const uint32_t upper_divider = 442;
-    const uint32_t lower_divider = 160;
-    return (float)(upper_divider + lower_divider) / lower_divider / 1000 * millivolts;
+   uint32_t raw = adc1_get_raw(ADC1_CHANNEL_3);
+   uint32_t millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_cal);
+   const uint32_t upper_divider = 442;
+   const uint32_t lower_divider = 160;
+   return (float)(upper_divider + lower_divider) / lower_divider / 1000 * millivolts;
 }
 
 int getChargeLevel(double volts)

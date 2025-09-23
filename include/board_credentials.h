@@ -8,16 +8,22 @@
 
 // Change here:
 
-inline int boardID       = 1000;
-inline String version    = "Firmware Version " TAC_VERSION;
-inline String API_KEY    = "xxxxxxxxxxxxxxXXXXXxxxxxxxxxxxxx";
-inline String lora_fqz   = CUSTOM_LORA_FQZ;
-inline String OTAA_APPEUI = "0000000000000000"; 
-inline String OTAA_DEVEUI = "0000000000000000"; 
+inline int boardID = 1000;
+inline String version = "Firmware Version " TAC_VERSION;
+inline String API_KEY = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+inline String lora_fqz = CUSTOM_LORA_FQZ;
+inline String OTAA_APPEUI = "0000000000000000";
+inline String OTAA_DEVEUI = "0000000000000000";
 inline String OTAA_APPKEY = "00000000000000000000000000000000";
-inline String apn        = "0000";
-inline String gprs_user  = "XXXXX";
-inline String gprs_pass  = "XXXXX";
+inline String apn = "0000";
+inline String gprs_user = "XXXXX";
+inline String gprs_pass = "XXXXX";
+inline String mqtt_server_ip = "158.255.212.248";
+inline String mqtt_topic = "/TAC/";
+inline int mqtt_port = 1883;
+inline String osc_ip = "192.168.242.120";
+inline int osc_port = 5000;
+inline String osc_topic = "/";
 
 #define LMIC_PRINTF_TO Serial
 

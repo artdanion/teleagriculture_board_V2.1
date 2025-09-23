@@ -120,6 +120,7 @@ extern bool freshBoot;
 
 extern bool sendDataWifi;
 extern bool sendDataLoRa;
+extern bool sendDataMQTT;
 extern bool no_upload;
 extern bool useSDCard;
 

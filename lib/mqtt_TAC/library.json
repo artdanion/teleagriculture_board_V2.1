@@ -1,0 +1,5 @@
+{
+  "name": "mqtt support for TAC Board",
+  "version": "1.0",
+  "dependencies": []
+}
