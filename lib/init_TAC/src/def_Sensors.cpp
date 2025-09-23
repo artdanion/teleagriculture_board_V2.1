@@ -94,6 +94,8 @@ ValueOrder getValueOrderFromString(String str)
     return ANGLE;
   if (str == "KOHM")
     return KOHM;
+  if (str == "DIRECTION")
+    return DEGREE;
 
   return NOT;
 }
@@ -683,5 +685,19 @@ const char *proto_sensors = R"([
     "possible_i2c_add": {
       "default": "0x53"
     }
+  },
+  {
+    "sensor-id": 28,
+    "name": "WIND_VANE",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "DIRECTION",
+        "unit": "deg",
+        "data_name": "Wind dir"
+      }
+    ]
   }
 ])";
