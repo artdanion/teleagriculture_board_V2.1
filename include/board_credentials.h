@@ -24,6 +24,8 @@ inline int mqtt_port = 1883;
 inline String osc_ip = "192.168.242.120";
 inline int osc_port = 5000;
 inline String osc_topic = "/";
+inline bool instant_upload = false;
+
 
 #define LMIC_PRINTF_TO Serial
 

@@ -391,6 +391,7 @@ void save_Config(void)
    doc["API_KEY"] = API_KEY.length() ? API_KEY : "";
    doc["upload"] = upload.length() ? upload : "";
    doc["upInterval"] = upload_interval;
+   doc["instant_upload"] = instant_upload;
 
    doc["OTAA_DEVEUI"] = OTAA_DEVEUI.length() ? OTAA_DEVEUI : "";
    doc["OTAA_APPEUI"] = OTAA_APPEUI.length() ? OTAA_APPEUI : "";
@@ -488,8 +489,13 @@ void load_Config(void)
       API_KEY = doc["API_KEY"].as<String>();
    if (doc.containsKey("upload"))
       upload = doc["upload"].as<String>();
+
    if (doc.containsKey("upInterval"))
       upload_interval = doc["upInterval"].as<int>();
+
+   if (doc.containsKey("instant_upload"))
+      instant_upload = doc["instant_upload"].as<bool>();
+
    if (doc.containsKey("anonym"))
       anonym = doc["anonym"].as<String>();
    if (doc.containsKey("user_CA"))

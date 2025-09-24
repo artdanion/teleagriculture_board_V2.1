@@ -74,6 +74,7 @@
 
 // flag for saving Connector data
 bool shouldSaveConfig = false;
+extern bool newSensorDataAvailable;
 
 // ----- Sensor section ----- //
 
@@ -197,6 +198,7 @@ void sensorRead()
     digitalWrite(LED, LOW);
 
     updateDataNames(sensorVector); // adding # to sensor data_name (e.g. temp, temp1, temp2 ....)
+    newSensorDataAvailable=true; // sets Data flag
 }
 
 void readI2C_Connectors()

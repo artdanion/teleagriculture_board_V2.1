@@ -637,7 +637,7 @@ void setupWebpageIfNeeded()
 
 void setupMQTTIfNeeded()
 {
-   if (upload!="LIVE" || live_mode != "MQTT" || forceConfig)
+   if (upload != "LIVE" || live_mode != "MQTT" || forceConfig)
       return;
 
    setUPWiFi();
@@ -689,7 +689,7 @@ void setupMQTTIfNeeded()
 
 void setupOSCIfNeeded()
 {
-   if (upload!="LIVE" || live_mode != "OSC" || forceConfig)
+   if (upload != "LIVE" || live_mode != "OSC" || forceConfig)
       return;
 
    setUPWiFi();
@@ -727,94 +727,98 @@ void setupOSCIfNeeded()
 
 void updateTimeHandle()
 {
+   // --- time & day change handling ---
    time_t rawtime;
    time(&rawtime);
-   localtime_r(&rawtime, &timeInfo); // Get the current local time
+   localtime_r(&rawtime, &timeInfo);
+   currentDay = timeInfo.tm_mday;
 
-   currentDay = timeInfo.tm_mday; // Update the current day
-
-   // Check if the day has changed and perform time synchronization if required
-   if ((currentDay != lastDay) && (upload == "WIFI") && !(WiFiManagerNS::NTPEnabled) && !freshBoot)
+   if ((currentDay != lastDay) && (upload == "WIFI") && !WiFiManagerNS::NTPEnabled && !freshBoot)
    {
-      // The day has changed since the last execution of this block
       String header = get_header();
-
       if (!setEsp32TimeFromHeader(header, timeZone))
       {
          Serial.println("Failed to set time");
       }
-      lastDay = currentDay; // Update the last day value
+      lastDay = currentDay;
    }
 
-   unsigned long currentMillis = millis();
-   unsigned long currentMillis_long = millis();
-   unsigned long currentMillis_upload = millis();
+   const unsigned long now = millis();
 
-   // check if its time to uplooad based on interval
-   if (currentMillis_upload - previousMillis_upload >= (upload_interval * mS_TO_MIN_FACTOR))
+   // --- interval-based upload (default mode) ---
+   if (now - previousMillis_upload >= (upload_interval * mS_TO_MIN_FACTOR))
    {
-      delay(100);
-
       if (upload == "NO")
-         no_upload = true; // Set flag to indicate no upload
-
+      {
+         no_upload = true;
+      }
       if (upload == "WIFI")
-         sendDataWifi = true; // Set flag to send data via WiFi
-
-      if (upload == "LORA" && !useBattery)
       {
-         if (loraJoined)
-         {
-            sendDataLoRa = true; // Set flag to send data via LoRa
-         }
+         sendDataWifi = true;
+      }
+      if (upload == "LORA" && !useBattery && loraJoined)
+      {
+         sendDataLoRa = true;
       }
 
-      if (live_mode == "MQTT")
-      {
-         sendDataMQTT = true;
-      }
-
-      if (live_mode == "OSC")
-      {
-         sendDataOSC = true;
+      if (!instant_upload)
+      { // instant handles LIVE separately
+         if (live_mode == "MQTT")
+            sendDataMQTT = true;
+         if (live_mode == "OSC")
+            sendDataOSC = true;
       }
 
       if (saveDataSDCard)
-         useSDCard = true; // Set flag to send data via SDCard
+      {
+         useSDCard = true;
+      }
 
-      previousMillis_upload = currentMillis_upload;
+      previousMillis_upload = now;
    }
 
-   // Perform periodic tasks based on intervals
-   if (currentMillis - previousMillis >= interval) // lower tft brightness after 1 min
+   // --- instant upload (only when new data available) ---
+   if (instant_upload && newSensorDataAvailable)
    {
-      backlight_pwm = 5; // Turn down the backlight
-      previousMillis = currentMillis;
+      static unsigned long lastInstantPush = 0;
+      const uint32_t minGap = 100; // ms, prevents flooding if sensors fire too fast
 
-      if (upload == "WIFI" && useBattery)
+      if (now - lastInstantPush >= minGap)
       {
-         gotoSleep = true; // Enable sleep mode if using WiFi and battery power
-      }
+         if (live_mode == "MQTT")
+            sendDataMQTT = true;
+         if (live_mode == "OSC")
+            sendDataOSC = true;
 
-      if (upload == "LORA" && useBattery)
-      {
-         gotoSleep = true; // Enable sleep mode if using LoRa and battery power and data transmitted
-      }
-
-      if (useSDCard && useBattery)
-      {
-         gotoSleep = true; // Enable sleep mode if using SDCard and battery power and data transmitted
+         lastInstantPush = now;
+         newSensorDataAvailable = false; // reset flag once handled
       }
    }
 
-   if (currentMillis_long - previousMillis_long >= interval2) // turn tft off after 5 min
+   // --- periodic UI/power tasks ---
+   if (now - previousMillis >= interval) // dim TFT after 1 min
    {
-      backlight_pwm = 0;             // Turn off the backlight
-      tft->fillScreen(ST7735_BLACK); // Fill the TFT screen with black color
-      previousMillis_long = currentMillis_long;
+      backlight_pwm = 5;
+      previousMillis = now;
+
+      if (useBattery)
+      {
+         if (upload == "WIFI")
+            gotoSleep = true;
+         if (upload == "LORA")
+            gotoSleep = true;
+         if (useSDCard)
+            gotoSleep = true;
+      }
+   }
+
+   if (now - previousMillis_long >= interval2) // turn off TFT after 5 min
+   {
+      backlight_pwm = 0;
+      tft->fillScreen(ST7735_BLACK);
+      previousMillis_long = now;
       displayRefresh = true;
-      tft->enableSleep(true); // Enable sleep mode for the TFT display
-                              // digitalWrite(TFT_BL, LOW);
+      tft->enableSleep(true);
    }
 }
 

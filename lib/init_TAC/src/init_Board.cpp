@@ -145,6 +145,7 @@ bool gotoSleep = true;
 bool userWakeup = false;
 bool forceConfig = false;
 bool freshBoot = true;
+bool newSensorDataAvailable = false;
 
 bool sendDataWifi = false;
 bool sendDataLoRa = false;

@@ -10,39 +10,46 @@ Listing directory: /
 
 Server Arguments
 === RECEIVED FORM DATA ===
-Arg 0: upload = 'LORA'
+Arg 0: upload = 'LIVE'
 Arg 1: display = '1'
 Arg 2: up_interval = '2'
-Arg 3: BoardID = '1014'
-Arg 4: API_KEY = 'fkYauyaxirkYjSKrzR8lzKuVnak4l2nV'
+Arg 3: BoardID = '1000'
+Arg 4: API_KEY = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 Arg 5: OTAA_APPEUI = '0000000000000000'
-Arg 6: OTAA_DEVEUI = '70B3D57ED005D967'
-Arg 7: OTAA_APPKEY = 'EDA96CD96FC5A6C31CCC77D65284C6A4'
+Arg 6: OTAA_DEVEUI = '0000000000000000'
+Arg 7: OTAA_APPKEY = '00000000000000000000000000000000'
 Arg 8: apn = '0000'
 Arg 9: gprs_user = 'XXXXX'
 Arg 10: gprs_pass = 'XXXXX'
-Arg 11: i2c_1 = '23'
-Arg 12: i2c_1_addr = '0'
-Arg 13: i2c_3 = '24'
-Arg 14: i2c_3_addr = '0'
-Arg 15: i2c_2 = '0'
-Arg 16: i2c_2_addr = '1'
-Arg 17: i2c_4 = '10'
-Arg 18: i2c_4_addr = '0'
-Arg 19: I2C_5V = '-1'
-Arg 20: adc_1 = '-1'
-Arg 21: onewire_1 = '22'
-Arg 22: adc_2 = '-1'
-Arg 23: onewire_2 = '-1'
-Arg 24: adc_3 = '-1'
-Arg 25: onewire_3 = '-1'
-Arg 26: system-time = '2025-09-18T19:26'
-Arg 27: timezone = '810'
-Arg 28: set-time = '2025-09-18T19:27'
-Arg 29: enable-dst = '1'
-Arg 30: custom_ntp = '129.6.15.28'
-Arg 31: ntp-server = '0'
-Arg 32: ntp-server-interval = '60'
+Arg 11: live_mqtt = '1'
+Arg 12: instant_upload = '1'
+Arg 13: mqtt_server_ip = '158.255.212.248'
+Arg 14: mqtt_topic = '/TAC/'
+Arg 15: mqtt_port = '1883'
+Arg 16: osc_ip = '192.168.242.120'
+Arg 17: osc_port = '5000'
+Arg 18: i2c_1 = '0'
+Arg 19: i2c_1_addr = '0'
+Arg 20: i2c_3 = '24'
+Arg 21: i2c_3_addr = '0'
+Arg 22: i2c_2 = '23'
+Arg 23: i2c_2_addr = '0'
+Arg 24: i2c_4 = '10'
+Arg 25: i2c_4_addr = '0'
+Arg 26: I2C_5V = '-1'
+Arg 27: adc_1 = '-1'
+Arg 28: onewire_1 = '22'
+Arg 29: adc_2 = '-1'
+Arg 30: onewire_2 = '-1'
+Arg 31: adc_3 = '-1'
+Arg 32: onewire_3 = '-1'
+Arg 33: system-time = '2025-09-24T12:34'
+Arg 34: timezone = '810'
+Arg 35: set-time = '2025-09-24T12:34'
+Arg 36: enable-dst = '1'
+Arg 37: custom_ntp = '129.6.15.28'
+Arg 38: ntp-server = '0'
+Arg 39: ntp-server-interval = '60'
 === END FORM DATA ===
 */
 
@@ -55,6 +62,7 @@ Arg 32: ntp-server-interval = '60'
 #include <time_functions.h>
 
 #define MAX_FOUND_I2C 16
+#define DEBUG_PRINT false
 
 void save_Connectors();
 void save_Config();
@@ -405,7 +413,7 @@ namespace WiFiManagerNS
                     "<option value=60>60 min</option>"
                     "</select>";
 
-    TimeConfHTML += "</div><BR><div>";
+    TimeConfHTML += "</div><div>";
 
     // ===== WIFI (wrapped so we can hide it) =====
     TimeConfHTML += "<div id='WIFI' style='display:none'><b>WiFi Upload Data</b>";
@@ -436,29 +444,36 @@ namespace WiFiManagerNS
 
     // ===== LIVE (with MQTT / OSC) =====
     TimeConfHTML += "<div id='LIVE' style='display:none'><b>Live Output</b><br>";
+
     TimeConfHTML += "<input type='checkbox' id='live_mqtt' name='live_mqtt' value='1' ";
-    TimeConfHTML += (upload == "LIVE" && live_mode == "MQTT") ? "checked" : "";
+    TimeConfHTML += (upload == "LIVE" && live_mode == "MQTT") ? "checked " : "";
     TimeConfHTML += "><label for='live_mqtt'> MQTT</label>&nbsp;&nbsp;";
+
     TimeConfHTML += "<input type='checkbox' id='live_osc' name='live_osc' value='1' ";
-    TimeConfHTML += (upload == "LIVE" && live_mode == "OSC") ? "checked" : "";
+    TimeConfHTML += (upload == "LIVE" && live_mode == "OSC") ? "checked " : "";
     TimeConfHTML += "><label for='live_osc'> OSC</label><br>";
 
+    TimeConfHTML += (instant_upload
+                         ? "<input type='checkbox' id='instant_upload' name='instant_upload' value='1' checked />"
+                         : "<input type='checkbox' id='instant_upload' name='instant_upload' value='1' />");
+    TimeConfHTML += "<label for='instant_upload'> instant upload (based on sensor rate)</label><br>";
+
+    // --- LIVE/MQTT details ---
     TimeConfHTML +=
         "<div id='LIVE_MQTT' style='display:none'>"
-        "<label for='mqtt_server_ip'>MQTT Server IP:</label>"
+        "<label for='mqtt_server_ip'>MQTT server IP:</label>"
         "<input type='text' id='mqtt_server_ip' name='mqtt_server_ip' "
         "pattern='^(?:\\d{1,3}\\.){3}\\d{1,3}$' title='IPv4 address' "
         "value='" +
         mqtt_server_ip + "' required><br>"
 
-                         "<label for='mqtt_topic'>MQTT Topic:</label>"
+                         "<label for='mqtt_topic'>MQTT topic:</label>"
                          "<input type='text' id='mqtt_topic' name='mqtt_topic' "
                          "pattern='^[A-Za-z0-9_\\-/]{1,128}$' title='Topic (A–Z a–z 0–9 _ - /)' "
                          "value='" +
         mqtt_topic + "' required><br>"
 
-                     // --- Port Preset + Custom Port ---
-                     "<label for='mqtt_port'>MQTT Port:</label>"
+                     "<label for='mqtt_port'>MQTT port:</label>"
                      "<select id='mqtt_port_preset' "
                      "onchange='var ip=document.getElementById(\"mqtt_port\");"
                      "if(this.value!=\"custom\"&&ip){ip.value=this.value;}'>"
@@ -472,22 +487,25 @@ namespace WiFiManagerNS
                                                                             "<input type='number' id='mqtt_port' name='mqtt_port' min='1' max='65535' "
                                                                             "value='" +
         String(mqtt_port) + "' required>"
-                            "<div class='muted'>Common: 1883 (Plain MQTT), 443 (MQTT over WSS/TLS).</div>"
+                            "<div class='muted'>Common: 1883 (plain MQTT), 443 (MQTT over WSS/TLS).</div>"
                             "</div>";
 
-    TimeConfHTML += "<div id='LIVE_OSC' style='display:none'>"
-                    "<label for='osc_ip'>OSC IP:</label>"
-                    "<input type='text' id='osc_ip' name='osc_ip' "
-                    "pattern='^(?:\\d{1,3}\\.){3}\\d{1,3}$' title='IPv4 address' "
-                    "value='" +
-                    osc_ip + "' required><br>"
-                             "<label for='osc_port'>OSC Port:</label>"
-                             "<input type='number' id='osc_port' name='osc_port' min='1' max='65535' "
-                             "value='" +
-                    String(osc_port) + "' required>"
-                                       "</div>";
+    // --- LIVE/OSC details ---
+    TimeConfHTML +=
+        "<div id='LIVE_OSC' style='display:none'>"
+        "<label for='osc_ip'>OSC IP:</label>"
+        "<input type='text' id='osc_ip' name='osc_ip' "
+        "pattern='^(?:\\d{1,3}\\.){3}\\d{1,3}$' title='IPv4 address' "
+        "value='" +
+        osc_ip + "' required><br>"
 
-    TimeConfHTML += "</div><br>";
+                 "<label for='osc_port'>OSC port:</label>"
+                 "<input type='number' id='osc_port' name='osc_port' min='1' max='65535' "
+                 "value='" +
+        String(osc_port) + "' required>"
+                           "</div>";
+
+    TimeConfHTML += "</div>";
 
     // ------------- Start Connectors -------
     TimeConfHTML += generateI2CTable();
@@ -694,6 +712,15 @@ namespace WiFiManagerNS
       }
     }
 
+    if (_wifiManager->server->hasArg("instant_upload"))
+    {
+      instant_upload = getBoolArg("instant_upload");
+    }
+    else
+    {
+      instant_upload = false;
+    }
+
     handleTimezoneSettings();
 
     handleBoardSettings();
@@ -769,6 +796,9 @@ namespace WiFiManagerNS
         "h1{font-size:20px;margin:0 0 10px}"
         "h2{font-size:16px;margin:22px 0 10px}"
         ".muted{font-size:12px;color:#9aa;margin-top:8px}"
+        ".tbl{width:100%;border-collapse:collapse;font-size:13px;}"
+        ".tbl th,.tbl td{padding:4px 6px;text-align:left;border-bottom:1px solid #2b2b2b;}"
+        ".tbl th{font-weight:600;color:#ccc;}"
         "</style>");
 
     html += WiFiManagerNS::getTemplate(WiFiManagerNS::HTML_HEAD_END);
@@ -815,10 +845,10 @@ namespace WiFiManagerNS
     html += "display = " + String(useDisplay ? "yes" : "no") + "\n";
     html += "battery = " + String(useBattery ? "yes" : "no") + "\n";
     html += "SD Card = " + String(useSDCard ? "yes" : "no") + "\n";
-
     html += "upload interval = " + String(upload_interval) + " min\n";
-    html += "RTC found = " + String(rtcEnabled ? "yes" : "no") + "\n";
+    html += "instand upload = " + String(instant_upload ? "yes" : "no") + "\n\n";
 
+    html += "RTC found = " + String(rtcEnabled ? "yes" : "no") + "\n";
     html += "NTP = " + String(WiFiManagerNS::NTPEnabled ? "yes" : "no") + "\n";
     html += "TZ = " + String(TZ::tzName) + "\n";
     html += "</pre>";
@@ -1403,8 +1433,10 @@ namespace WiFiManagerNS
 
   bool getBoolArg(const char *name)
   {
-    return _wifiManager->server->hasArg(name) &&
-           atoi(_wifiManager->server->arg(name).c_str()) == 1;
+    if (!_wifiManager->server->hasArg(name))
+      return false;
+    const String &val = _wifiManager->server->arg(name);
+    return (val == "1" || val.equalsIgnoreCase("true") || val == "on");
   }
 
   int getIntArg(const char *name, int defaultValue)

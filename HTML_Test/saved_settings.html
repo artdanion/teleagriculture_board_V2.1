@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta name='format-detection' content='telephone=no'>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1,user-scalable=no' />
+    <title>Board Settings Saved</title>
+    <style>
+        .c,
+        body {
+            text-align: center;
+            font-family: verdana
+        }
+
+        div,
+        input,
+        select {
+            padding: 5px;
+            font-size: 1em;
+            margin: 5px 0;
+            box-sizing: border-box
+        }
+
+        input,
+        button,
+        select,
+        .msg {
+            border-radius: .3rem;
+            width: 100%
+        }
+
+        input[type=radio],
+        input[type=checkbox] {
+            width: auto
+        }
+
+        button,
+        input[type='button'],
+        input[type='submit'] {
+            cursor: pointer;
+            border: 0;
+            background-color: #1fa3ec;
+            color: #fff;
+            line-height: 2.4rem;
+            font-size: 1.2rem;
+            width: 100%
+        }
+
+        input[type='file'] {
+            border: 1px solid #1fa3ec
+        }
+
+        .wrap {
+            text-align: left;
+            display: inline-block;
+            min-width: 260px;
+            max-width: 500px
+        }
+
+        a {
+            color: #000;
+            font-weight: 700;
+            text-decoration: none
+        }
+
+        a:hover {
+            color: #1fa3ec;
+            text-decoration: underline
+        }
+
+        .q {
+            height: 16px;
+            margin: 0;
+            padding: 0 5px;
+            text-align: right;
+            min-width: 38px;
+            float: right
+        }
+
+        .q.q-0:after {
+            background-position-x: 0
+        }
+
+        .q.q-1:after {
+            background-position-x: -16px
+        }
+
+        .q.q-2:after {
+            background-position-x: -32px
+        }
+
+        .q.q-3:after {
+            background-position-x: -48px
+        }
+
+        .q.q-4:after {
+            background-position-x: -64px
+        }
+
+        .q.l:before {
+            background-position-x: -80px;
+            padding-right: 5px
+        }
+
+        .ql .q {
+            float: left
+        }
+
+        .q:after,
+        .q:before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            background-repeat: no-repeat;
+            background-position: 16px 0;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAAAQCAMAAADeZIrLAAAAJFBMVEX///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADHJj5lAAAAC3RSTlMAIjN3iJmqu8zd7vF8pzcAAABsSURBVHja7Y1BCsAwCASNSVo3/v+/BUEiXnIoXkoX5jAQMxTHzK9cVSnvDxwD8bFx8PhZ9q8FmghXBhqA1faxk92PsxvRc2CCCFdhQCbRkLoAQ3q/wWUBqG35ZxtVzW4Ed6LngPyBU2CobdIDQ5oPWI5nCUwAAAAASUVORK5CYII=');
+        }
+
+        @media (-webkit-min-device-pixel-ratio: 2),
+        (min-resolution: 192dpi) {
+
+            .q:before,
+            .q:after {
+                background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALwAAAAgCAMAAACfM+KhAAAALVBMVEX///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAOrOgAAAADnRSTlMAESIzRGZ3iJmqu8zd7gKjCLQAAACmSURBVHgB7dDBCoMwEEXRmKlVY3L//3NLhyzqIqSUggy8uxnhCR5Mo8xLt+14aZ7wwgsvvPA/ofv9+44334UXXngvb6XsFhO/VoC2RsSv9J7x8BnYLW+AjT56ud/uePMdb7IP8Bsc/e7h8Cfk912ghsNXWPpDC4hvN+D1560A1QPORyh84VKLjjdvfPFm++i9EWq0348XXnjhhT+4dIbCW+WjZim9AKk4UZMnnCEuAAAAAElFTkSuQmCC');
+                background-size: 95px 16px;
+            }
+        }
+
+        .msg {
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #eee;
+            border-left-width: 5px;
+            border-left-color: #777
+        }
+
+        .msg h4 {
+            margin-top: 0;
+            margin-bottom: 5px
+        }
+
+        .msg.P {
+            border-left-color: #1fa3ec
+        }
+
+        .msg.P h4 {
+            color: #1fa3ec
+        }
+
+        .msg.D {
+            border-left-color: #dc3630
+        }
+
+        .msg.D h4 {
+            color: #dc3630
+        }
+
+        .msg.S {
+            border-left-color: #5cb85c
+        }
+
+        .msg.S h4 {
+            color: #5cb85c
+        }
+
+        dt {
+            font-weight: bold
+        }
+
+        dd {
+            margin: 0;
+            padding: 0 0 0.5em 0;
+            min-height: 12px
+        }
+
+        td {
+            vertical-align: top;
+        }
+
+        .h {
+            display: none
+        }
+
+        button {
+            transition: 0s opacity;
+            transition-delay: 3s;
+            transition-duration: 0s;
+            cursor: pointer
+        }
+
+        button.D {
+            background-color: #dc3630
+        }
+
+        button:active {
+            opacity: 50% !important;
+            cursor: wait;
+            transition-delay: 0s
+        }
+
+        body.invert,
+        body.invert a,
+        body.invert h1 {
+            background-color: #060606;
+            color: #fff;
+        }
+
+        body.invert .msg {
+            color: #fff;
+            background-color: #282828;
+            border-top: 1px solid #555;
+            border-right: 1px solid #555;
+            border-bottom: 1px solid #555;
+        }
+
+        body.invert .q[role=img] {
+            -webkit-filter: invert(1);
+            filter: invert(1);
+        }
+
+        :disabled {
+            opacity: 0.5;
+        }
+    </style>
+    <style>
+        body {
+            background: #111;
+            color: #eaeaea
+        }
+
+        .wrap {
+            max-width: 900px;
+            margin: 36px auto;
+            padding: 0 16px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px
+        }
+
+        .card {
+            background: #1b1b1b;
+            border: 1px solid #2b2b2b;
+            border-radius: 12px;
+            overflow: hidden
+        }
+
+        .card-h {
+            font-weight: 600;
+            padding: 10px 12px;
+            border-bottom: 1px solid #2b2b2b
+        }
+
+        .card-b {
+            padding: 10px 12px
+        }
+
+        .kv {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 6px 0
+        }
+
+        code {
+            background: #0e0e0e;
+            border: 1px solid #2b2b2b;
+            padding: 2px 6px;
+            border-radius: 6px
+        }
+
+        .tag {
+            border: 1px solid #444;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            margin-left: 6px
+        }
+
+        .tag.on {
+            border-color: #2ea043
+        }
+
+        .tag.off {
+            border-color: #a12d2f
+        }
+
+        .btns {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid #3b82f6;
+            background: #2563eb;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block
+        }
+
+        .btn.secondary {
+            background: #0b0b0b;
+            border-color: #434343;
+            color: #e5e5e5
+        }
+
+        pre {
+            white-space: pre-wrap;
+            background: #0e0e0e;
+            border: 1px solid #2b2b2b;
+            padding: 12px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow: auto
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 10px
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 22px 0 10px
+        }
+
+        .muted {
+            font-size: 12px;
+            color: #9aa;
+            margin-top: 8px
+        }
+
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .tbl th,
+        .tbl td {
+            padding: 4px 6px;
+            text-align: left;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        .tbl th {
+            font-weight: 600;
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body class='invert'>
+    <div class='wrap'>
+        <link rel='icon' type='image/png; base64' sizes='32x32'
+            href='data:image/png;base64,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'>
+        <img title='tac_logo' alt='tac_logo'
+            src='data:image/png;base64,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' />
+        <h3>www.teleagriculture.org</h3>
+        <div class='wrap'>
+            <h1>Settings applied</h1>
+            <p>reboot or back to main menu</p>
+            <h2>Data stored:</h2>
+            <pre>BoardID = 1014
+upload = LIVE
+live_mode = MQTT
+mqtt_server_ip = 158.255.212.248
+mqtt_topic = /TAC/
+mqtt_port = 1883
+display = yes
+battery = no
+SD Card = no
+upload interval = 2 min
+instand upload = no
+
+RTC found = yes
+NTP = no
+TZ = Europe/Vienna
+</pre>
+            <div class='card'>
+                <div class='card-h'>Saved Sensors</div>
+                <div class='card-b'>
+                    <table class='tbl'>
+                        <thead>
+                            <tr>
+                                <th>CON</th>
+                                <th>Typ</th>
+                                <th>Sensor</th>
+                                <th>I2C-Adr</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>I2C_1</td>
+                                <td>I2C</td>
+                                <td>BMP_280</td>
+                                <td><code>0x76</code></td>
+                                <td><span class='tag on'>online</span></td>
+                            </tr>
+                            <tr>
+                                <td>I2C_2</td>
+                                <td>I2C</td>
+                                <td>BMP_680</td>
+                                <td><code>0x77</code></td>
+                                <td><span class='tag on'>online</span></td>
+                            </tr>
+                            <tr>
+                                <td>I2C_3</td>
+                                <td>I2C</td>
+                                <td>BH_1750</td>
+                                <td><code>0x23</code></td>
+                                <td><span class='tag on'>online</span></td>
+                            </tr>
+                            <tr>
+                                <td>I2C_4</td>
+                                <td>I2C</td>
+                                <td>RTCDS3231</td>
+                                <td><code>0x68</code></td>
+                                <td><span class='tag on'>online</span></td>
+                            </tr>
+                            <tr>
+                                <td>1-W_1</td>
+                                <td>1-Wire</td>
+                                <td>DHT11</td>
+                                <td>&ndash;</td>
+                                <td>&ndash;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class='btns'>
+                <form action='/reboot' method='POST' style='margin:0'><button class='btn' type='submit'>Reboot</button>
+                </form><a class='btn secondary' href='/'>Back to Main Menu</a>
+            </div>
+            <div class='muted'>I2C-Status shows if address was found</div>
+        </div>
+    </div>
+</body>
+
+</html>
