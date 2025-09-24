@@ -73,7 +73,7 @@ data/
 └── cert/                       # TLS certificate bundle
 ```
 
-> **Tip**: Keep all sensor definitions centralized in `lib/init_TAC/src/def_Sensors.cpp` and add per‑connector read paths in `include/sensor_Read.hpp` for clarity.
+> **Tip**: Keep all sensor definitions centralized in `lib/init_TAC/src/def_Sensors.cpp` add  `lib/init_TAC/src/def_Sensors.h` for clarity.
 
 **High‑Level Runtime Architecture**
 - **Setup phase** configures hardware, filesystem, network, time, and protocols.
