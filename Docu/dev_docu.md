@@ -191,7 +191,7 @@ pio device monitor -b 115200
 - **EXTRA** – General-purpose GPIO‑based sensors
 
 ### Implemented Sensors
-*Automatically parsed from `lib/init_TAC/src/def_Sensors.cpp`:*
+*in V 1.75*
 
 #### Environmental Sensors
 - **BME280/BMP280/BMP680**: Temperature, humidity, pressure, gas resistance
@@ -221,8 +221,8 @@ pio device monitor -b 115200
 
 ### Adding New Sensors
 1. **Define in Library**: Add sensor definition to `lib/init_TAC/src/def_Sensors.cpp` (JSON entry)
-2. **Update Enums**: Extend `SensorsImplemented` in `include/sensor_Board.hpp` if required
-3. **Update SensorNUM**: Raise SENSORS_NUM in def_Sensors.h by 1.
+2. **Update Enums**: Extend `SensorsImplemented` in `lib/init_TAC/src/def_Sensors.h` if required
+3. **Update SensorNUM**: Raise `SENSORS_NUM` by 1 in `lib/init_TAC/src/def_Sensors.h`.
 4. **Implement Reading**: Add reading logic in `include/sensor_Read.hpp` for the appropriate connector type
 5. **Protocol Integration**: Update payload mapping for LoRa/MQTT/OSC transmission (if new Units are added)
 6. **Documentation**: Update sensor count and this documentation
