@@ -34,9 +34,9 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 
 --> VERSION 1.09
 
-- BMP_280: A temperature and pressure sensor. <mark>BMP280_DEFAULT_ADDRESS 0x77 is used<mark>
+- BMP_280: A temperature and pressure sensor.
 - LEVEL: A water level sensor.
-- VEML7700: An ambient light sensor. <mark>VEML7700_I2CADDR_DEFAULT 0x10 is used<mark>
+- VEML7700: An ambient light sensor.
 - TDS: A total dissolved solids sensor.
 - CAP_SOIL: A capacitive soil moisture sensor.
 - CAP_GROOVE: A capacitive groove moisture sensor.
@@ -44,11 +44,11 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 - DS18B20: A temperature sensor.
 - MULTIGAS: A multi-gas sensor. <mark>`gas.begin(Wire, 0x08);` I2C Address is used<mark>
 - MULTIGAS_V1: An older version of the multi-gas sensor. <mark>`multiGasV1.begin(0x04);` I2C Address is used<mark>
-- DS3231: A real-time clock module - <mark>not implemented now.<mark>
+- DS3231: A real-time clock module
 - BATTERY: Battery level sensed on BATSENS Pin.
 - WS2812: An RGB LED strip - <mark>not implemented now.<mark>
 - SERVO: A servo motor -<mark>not implemented now.<mark>
-- BME_280: A temperature, humidity and pressure sensor. <mark>BME280_ADDRESS_ALTERNATE (0x76) is used<mark>
+- BME_280: A temperature, humidity and pressure sensor.
 - SOUND: Gravity analog Sound level meter https://wiki.dfrobot.com/Gravity__Analog_Sound_Level_Meter_SKU_SEN0232
 - Pressure Level Sensor  https://wiki.dfrobot.com/Throw-in_Type_Liquid_Level_Transmitter_SKU_KIT0139
 - ML8511 UV Sensor https://wiki.dfrobot.com/UV_Sensor_v1.0-ML8511_SKU_SEN0175
@@ -99,11 +99,11 @@ To add new sensors, follow these steps:
 - [x] custom NTP server option
 - [x] include CA root certificates
 - [x] EduRoam WPA3 support (tested at Kunstuni Linz and JKU Linz)
-- [ ] support for alternative I2C adresses
+- [x] support for alternative I2C adresses
 - [x] data upload intervall based on UI
 - [x] display data in the browser (just in NO BATTERY MODE)
 - [ ] powermanagment field tests
-- [ ] implement DS3231 RTC
+- [x] implement DS3231 RTC
 - [ ] implement WS2812 LED function and control logic
 - [ ] implement Servo function and control logic
 - [ ] sensor calibration option
@@ -116,3 +116,24 @@ To add new sensors, follow these steps:
 for technical questions you can write me an email: artdanion at gmail.com
 
  
+
+## Implemented Sensors
+
+- ADS1115
+- BH_1750
+- BME_280
+- BMP_280
+- BMP_680
+- DFR FLAME
+- DFR LIGHT
+- DFR LM35
+- DHT11
+- DHT22
+- DS18B20
+- LTR_390
+- MultiGasV1
+- MultiGasV2
+- RTCDS3231
+- SHT_21
+- TDS
+- VELM7700

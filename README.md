@@ -10,7 +10,10 @@
 
 # TeleAgriCulture Board V2.1
 
-![TeleAgriCulture Board V2.1](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/tac_board_V2_1_02.JPG){width=50% height=50%}
+![TeleAgriCulture Board V2.1](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/tac_board_V2_1_02.JPG)
+
+_Picture by Daniel Fischer 2024_
+
 
 This is a repository for the TeleAgriCulture Board V2.1, a modular and open-source hardware platform for urban agriculture and ecology projects.
 
@@ -82,21 +85,27 @@ The board supports SD card logging for data storage. Below are the instructions 
 
 #### Connecting an SD Card Reader
 1. **Identify the SPI Connector**: Refer to the image below for the location of the SPI connector on the board.
-   ![SPI Connector](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SPI_CON.jpeg){width=50% height=50%}
+   ![SPI Connector](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SPI_CON.jpeg)
 
-2. **Identify the SD Card Reader Module**: Refer to the image below for the SD card reader module.
-   ![SD Card Reader Module](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SD_CARD-Modul.jpeg){width=50% height=50%}
+_Picture by Daniel Fischer 2024_
+
+
+1. **Identify the SD Card Reader Module**: Refer to the image below for the SD card reader module.
+   ![SD Card Reader Module](https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/SD_CARD-Modul.jpeg)
+
+_Picture by Daniel Fischer 2024_
+
 
    I used this SD Card Module: [External Link](https://www.amazon.de/dp/B09YYG6BT3?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1), but you can use any other SD Card Module with SPI connection and 3.3V.
 
-3. **Connections**:
+1. **Connections**:
    - **VCC** to **VCC**
    - **GND** to **GND**
    - **MOSI** to **MOSI**
    - **MISO** to **MISO**
    - **CS** to **CS**
 
-4. **SD Card Format**: Ensure the SD card is formatted to **FAT32** for compatibility.
+2. **SD Card Format**: Ensure the SD card is formatted to **FAT32** for compatibility.
 
 ## Additional Information
 - **Battery Mode**: When Battery Mode is enabled, certain features may be limited to conserve power.
@@ -117,3 +126,25 @@ Use of the API to get data out : https://gitlab.com/teleagriculture/community/-/
 
 >**for more info about the source code and if you would like to contribute in the coding goto:**  [Docu Page](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Docu)
 there is also a section about integrated sensors.
+
+## Implemented Sensors
+
+- ADS1115
+- BH_1750
+- BME_280
+- BMP_280
+- BMP_680
+- DFR FLAME
+- DFR LIGHT
+- DFR LM35
+- DHT11
+- DHT22
+- DS18B20
+- LTR_390
+- MultiGasV1
+- MultiGasV2
+- RTCDS3231
+- SHT_21
+- TDS
+- VELM7700
+

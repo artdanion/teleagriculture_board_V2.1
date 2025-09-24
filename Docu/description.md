@@ -1,0 +1,23 @@
+
+
+## Implemented Sensors
+
+- ADS1115
+- BH_1750
+- BME_280
+- BMP_280
+- BMP_680
+- DFR FLAME
+- DFR LIGHT
+- DFR LM35
+- DHT11
+- DHT22
+- DS18B20
+- LTR_390
+- MultiGasV1
+- MultiGasV2
+- RTCDS3231
+- SHT_21
+- TDS
+- VELM7700
+- WS2812
