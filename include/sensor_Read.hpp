@@ -184,9 +184,8 @@ void sensorRead()
         newSensor.measurements->value = getBatteryVoltage();
         sensorVector.push_back(newSensor);
 
-        Serial.println("SensorRead.....");
-        Serial.println();
-
+        // Serial.println("\nSensorRead.....");
+        DEBUG_PRINT("Sensor Read ....");
         readOneWire_Connectors();
         readADC_Connectors();
         readI2C_Connectors();
@@ -211,6 +210,7 @@ void readI2C_Connectors()
         {
         case NO:
         {
+            DEBUG_PRINTLN("NO I2C Sensors attached @ I2C_%d",(j+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("I2C_");
             // Serial.println(j + 1);
@@ -373,7 +373,7 @@ void readI2C_Connectors()
                 Serial.println("16-Bit ADC ADS1115 not found");
                 break;
             }
-            delay(2000); // wait for sensors
+            delay(200); // wait for sensors
 
             int16_t adc0, adc1, adc2, adc3;
             float volts0, volts1, volts2, volts3;
@@ -454,7 +454,6 @@ void readI2C_Connectors()
             temp=SHT2x.GetTemperature();
             humi=SHT2x.GetHumidity();
 
-
             Sensor newSensor = allSensors[SHT_21];
             newSensor.measurements[0].value = temp;
             newSensor.measurements[1].value = humi;
@@ -503,9 +502,9 @@ void readI2C_Connectors()
             bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
             bme.setGasHeater(320, 150); // 320*C for 150 ms
 
-            delay(300);
+            delay(50);
             bme.beginReading();
-            delay(1000); // wait for the measurement to complete
+            delay(100); // wait for the measurement to complete
             bme.endReading();
 
             Sensor newSensor = allSensors[BMP_680];
@@ -528,7 +527,7 @@ void readI2C_Connectors()
 
             if (!ltr.init()) // just one i2c address known
             {
-                delay(200);
+                delay(50);
                 Serial.println("Couldn't find LTR sensor!");
                 break;
             }
@@ -539,13 +538,13 @@ void readI2C_Connectors()
             ltr.setGain(LTR390_GAIN_3);                 // Recommended for Lux - x3
             ltr.setResolution(LTR390_RESOLUTION_18BIT); // Recommended for Lux - 18-bit
             ltr.setMode(LTR390_MODE_ALS);
-            delay(100);
+            delay(50);
             newSensor.measurements[0].value = ltr.getLux();
 
             ltr.setGain(LTR390_GAIN_18);                // Recommended for UVI - x18
             ltr.setResolution(LTR390_RESOLUTION_20BIT); // Recommended for UVI - 20-bit
             ltr.setMode(LTR390_MODE_UVS);
-            delay(100);
+            delay(50);
             newSensor.measurements[1].value = ltr.getUVI();
 
             sensorVector.push_back(newSensor);
@@ -566,6 +565,7 @@ void readADC_Connectors()
         {
         case NO:
         {
+            DEBUG_PRINTLN("NO ADC Sensors attached @ ADC_%d",(j+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("ADC_");
             // Serial.println(i + 1);
@@ -953,6 +953,7 @@ void readOneWire_Connectors()
         {
         case NO:
         {
+            DEBUG_PRINTLN("NO 1-Wire Sensors attached @ 1-W_%d",(j+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("1-Wire_");
             // Serial.println(OWi + 1);
@@ -979,7 +980,7 @@ void readOneWire_Connectors()
 
             DHT dht(dht22SensorPin, DHTTYPE1);
             dht.begin(dht22SensorPin);
-            delay(2000);
+            delay(200);
 
             Sensor newSensor = allSensors[DHT_22];
 
@@ -1010,7 +1011,7 @@ void readOneWire_Connectors()
 
             DHT dht2(dht11SensorPin, DHTTYPE2);
             dht2.begin(dht11SensorPin);
-            delay(2000);
+            delay(200);
 
             Sensor newSensor = allSensors[DHT_22];
 
