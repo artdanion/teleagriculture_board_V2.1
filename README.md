@@ -2,8 +2,18 @@
 
 >Firmware is based on this VS Code / Platformio ESP32-S3 Project
 
+## Known Issue: PlatformIO Build Error (intelhex module)
+
+If you encounter a `ModuleNotFoundError: No module named 'intelhex'` during compilation, install the missing module:
+```bash
+C:\Users\YOUR_USERNAME\.platformio\penv\Scripts\python.exe -m pip install intelhex
+```
+
+On Linux/Mac use: `~/.platformio/penv/bin/python -m pip install intelhex`
+
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
->[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.03
+>[current Firmware](https://github.com/artdanion/teleagriculture_board_V2.1/tree/main/Firmware) version 1.75
+
 >
 >**If you are using LORA please choose the right Firmware for your location / lora module**
 >and you have to enter your credentials for LoRa on the Config Portal
