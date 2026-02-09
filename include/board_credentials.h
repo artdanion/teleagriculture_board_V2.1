@@ -27,6 +27,8 @@ inline String osc_topic = "/";
 inline bool instant_upload = false;
 
 
+
+
 #define LMIC_PRINTF_TO Serial
 
 inline const char *kits_ca =
