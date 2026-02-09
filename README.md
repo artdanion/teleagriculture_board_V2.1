@@ -11,6 +11,9 @@ C:\Users\YOUR_USERNAME\.platformio\penv\Scripts\python.exe -m pip install intelh
 
 On Linux/Mac use: `~/.platformio/penv/bin/python -m pip install intelhex`
 
+
+----
+
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
 >[current Firmware](https://github.com/artdanion/teleagriculture_board_V2.1/tree/main/Firmware) version 1.75
 
