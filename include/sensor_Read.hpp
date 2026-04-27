@@ -210,7 +210,7 @@ void readI2C_Connectors()
         {
         case NO:
         {
-            DEBUG_PRINTLN("NO I2C Sensors attached @ I2C_%d",(j+1));
+            LOGD("NO I2C Sensors attached @ I2C_%d", (j+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("I2C_");
             // Serial.println(j + 1);
@@ -565,7 +565,7 @@ void readADC_Connectors()
         {
         case NO:
         {
-            DEBUG_PRINTLN("NO ADC Sensors attached @ ADC_%d",(j+1));
+            LOGD("NO ADC Sensors attached @ ADC_%d", (i+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("ADC_");
             // Serial.println(i + 1);
@@ -953,7 +953,7 @@ void readOneWire_Connectors()
         {
         case NO:
         {
-            DEBUG_PRINTLN("NO 1-Wire Sensors attached @ 1-W_%d",(j+1));
+            LOGD("NO 1-Wire Sensors attached @ 1-W_%d", (OWi+1));
             // Serial.print("\nNo Sensor attaches at ");
             // Serial.print("1-Wire_");
             // Serial.println(OWi + 1);
@@ -1013,7 +1013,7 @@ void readOneWire_Connectors()
             dht2.begin(dht11SensorPin);
             delay(200);
 
-            Sensor newSensor = allSensors[DHT_22];
+            Sensor newSensor = allSensors[DHT_11];
 
             newSensor.measurements[0].value = dht2.readTemperature();
             newSensor.measurements[1].value = dht2.readHumidity();

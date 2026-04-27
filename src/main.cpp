@@ -168,7 +168,7 @@ void setup()
    if (forceConfig)
       openConfig();
 
-   if (upload == "NO_UPLOAD")
+   if (upload == "NO")
       no_upload = true;
 
    if (!useBattery)
@@ -239,7 +239,7 @@ void openConfig()
    startBlinking(); // Start blinking an LED to indicate configuration mode
 
    backlight_pwm = 200;
-   analogWrite(TFT_BL, backlight_pwm); // Turn off TFT Backlight
+   analogWrite(TFT_BL, backlight_pwm); // Backlight on for config mode
 
    setUPWiFi();
 
@@ -464,7 +464,6 @@ void wifi_sendData(void)
 
    LOGI("HTTP %d", httpCode);
    https.end();
-   DynamicJsonDocument deallocate(docMeasures);
 }
 
 void connectIfWifi()
@@ -886,9 +885,8 @@ void configButtonTask(void *parameter)
             {
                Serial.println("failed to connect and hit timeout");
                delay(3000);
-               ESP.restart();
-               delay(5000);
             }
+            ESP.restart();
          }
       }
       else

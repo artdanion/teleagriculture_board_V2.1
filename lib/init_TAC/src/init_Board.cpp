@@ -281,8 +281,7 @@ void GPIO_wake_up()
       userWakeup = true;
       freshBoot = false;
 
-      if (useDisplay)
-         gotoSleep = false;
+      gotoSleep = false;
    }
 
    if (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER)

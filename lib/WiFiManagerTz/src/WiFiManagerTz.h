@@ -1371,9 +1371,9 @@ namespace WiFiManagerNS
     digitalWrite(SW_3V3, HIGH);
     digitalWrite(SW_5V, HIGH);
 
+    Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
     for (address = 1; address < 127; address++)
     {
-      Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
       Wire.beginTransmission(address);
       error = Wire.endTransmission();
       if (error == 0)
@@ -1405,8 +1405,8 @@ namespace WiFiManagerNS
       }
     }
     Wire.endTransmission();
-    // digitalWrite(SW_3V3, LOW);
-    // digitalWrite(SW_5V, LOW);
+    digitalWrite(SW_3V3, LOW);
+    digitalWrite(SW_5V, LOW);
 
     if (count == 0)
     {
