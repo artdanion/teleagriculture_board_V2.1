@@ -25,7 +25,7 @@
  *
 
 
-/*********************************** VERSION 1.60 ****************************
+/*********************************** VERSION 1.80 ****************************
 /*
  *
  * board credentials are in /include/board_credentials.h  (BoardID, API_KEY and LORA credentials)
