@@ -14,6 +14,12 @@ Switch board into Config Mode (new boards start into config mode)
 
 Connect to board via WiFi (on your Mobile phone or Notebook)
 
+**WiFi Network Name (SSID):**
+- **Firmware v1.80+**: `TAC-XXXXXX` (e.g. `TAC-A1B2C3`) — unique per board, last 6 hex digits of MAC address
+- **Firmware v1.75 and earlier**: `TeleAgriCulture Board` (static SSID on all boards)
+
+**Password**: `enter123`
+
 <img src="https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/board_wifi.jpg" alt="Board WiFi" width="400" height="400">
 
 Config Portal opens automatically or open IP: 192.168.4.1 in a browser (on the device you connected to the Board WiFi)
@@ -25,7 +31,7 @@ Now you can change your board settings (WiFi Network, Upload, Sensors, Timezone.
 If you use the Update Option:
 
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
->[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.02
+>[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.80
 >
 >**If you are using LORA please choose the right Firmware for your location / lora module**
 >and you have to enter your credentials for LoRa on the Config Portal
@@ -50,22 +56,6 @@ there is also a section about integrated sensors.
 
 ## Implemented Sensors
 
-- ADS1115
-- BH_1750
-- BME_280
-- BMP_280
-- BMP_680
-- DFR FLAME
-- DFR LIGHT
-- DFR LM35
-- DHT11
-- DHT22
-- DS18B20
-- LTR_390
-- MultiGasV1
-- MultiGasV2
-- RTCDS3231
-- SHT_21
-- TDS
-- VELM7700
-- WS2812
+For a complete list of all implemented sensors with technical details, see [README.md - Implemented Sensors](../README.md#implemented-sensors) (30 sensors total)
+
+Quick list: ADS1115, BATTERY, BH_1745, BH_1750, BME_280, BMP_280, BMP_680, CAP_SOIL, CAP_GROOVE, DFR FLAME, DFR LIGHT, DFR LM35, DHT11, DHT22, DS18B20, LEVEL, LTR_390, MultiGasV1, MultiGasV2, PRE_LVL, RTCDS3231, SERVO, SHT_21, SOUND, SPF_WINDVANE, SPF_ANEMOMETER, TDS, UV_DFR, VEML7700, WS2812

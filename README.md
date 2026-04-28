@@ -58,7 +58,10 @@ The boards are flashed with the actual firmware at shipping, and ready to use...
 Follow these steps: [here a version with pictures](https://gitlab.com/teleagriculture/community/-/blob/main/teleAgriCulture%20Board%20V2.1/Docu/setup.md)
 
 - power the board ( via Micro USB or Waveshare Solar Power Manager board)
-- the board creates a WiFi Access Point ( SSID: <mark style="background-color: lightblue">TeleAgriCulture Board</mark> / Password: <mark style="background-color: lightblue">enter123</mark>)
+- the board creates a WiFi Access Point with a **unique SSID per board**:
+  - **Firmware v1.80+**: SSID: `TAC-XXXXXX` (e.g. `TAC-A1B2C3`) — last 6 hex digits of the board's MAC address
+  - **Firmware v1.75 and earlier**: SSID: `TeleAgriCulture Board` (static, same on all boards)
+- **Password**: `enter123` (same on all versions)
 - connect to this Wifi Network with your mobilephone or laptop
 - you will be redirected in your browser to the Config Portal of the board ( IP: 192.168.4.1 )
 - go through all setup pages and choose your settings

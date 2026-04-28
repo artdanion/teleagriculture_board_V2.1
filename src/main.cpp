@@ -34,7 +34,7 @@
  * ------> Config Portal opens after double reset or holding BooT button for > 5sec
  *____________________________________________________________
  *
- * Config Portal Access Point:   SSID: TeleAgriCulture Board
+ * Config Portal Access Point:   SSID: TAC-XXXXXX (unique per board, last 6 hex chars of MAC)
  *                               pasword: enter123
  *____________________________________________________________
  *
@@ -83,6 +83,9 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 bool configPortal_run = false;
 
+// WiFi AP SSID (generated unique per board)
+String boardSSID;
+
 // ----- Function declaration -----//
 void openConfig(void);
 void handleWakeupDisplay();
@@ -117,11 +120,23 @@ void onMqttMessage(char *topic, byte *payload, unsigned int len);
 TaskHandle_t configTaskHandle;
 void configButtonTask(void *parameter);
 
+// Generate unique SSID from MAC address (last 6 hex chars)
+String generateUniqueSSID() {
+  uint64_t chipid = ESP.getEfuseMac();
+  char ssid[16];
+  snprintf(ssid, sizeof(ssid), "TAC-%02X%02X%02X",
+    (uint8_t)(chipid >> 16), (uint8_t)(chipid >> 8), (uint8_t)chipid);
+  return String(ssid);
+}
+
 void setup()
 {
 #if DEBUG_PRINT
    delay(2000);
 #endif
+
+   // Generate unique SSID for this board
+   boardSSID = generateUniqueSSID();
 
    initBoard();
    initFiles();
@@ -249,12 +264,13 @@ void openConfig()
    wifiManager.setAPCallback(configModeCallback);
    Serial.print("Board ID: ");
    Serial.println(boardID);
-   Serial.println("SSID: TeleAgriCulture Board");
+   Serial.print("SSID: ");
+   Serial.println(boardSSID);
    Serial.println("PW: enter123");
 
    wifiManager.setCleanConnect(true);
 
-   if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
+   if (!wifiManager.startConfigPortal(boardSSID.c_str(), "enter123"))
    {
       Serial.println("failed to connect and hit timeout");
       delay(3000);
@@ -488,7 +504,7 @@ void connectIfWifi()
    // set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
    wifiManager.setAPCallback(configModeCallback);
 
-   bool success = wifiManager.autoConnect("TeleAgriCulture Board", "enter123");
+   bool success = wifiManager.autoConnect(boardSSID.c_str(), "enter123");
 
    if (!success)
    {
@@ -647,7 +663,7 @@ void setupMQTTIfNeeded()
    setUPWiFi();
 
    wifiManager.setAPCallback(configModeCallback);
-   bool success = wifiManager.autoConnect("TeleAgriCulture Board", "enter123");
+   bool success = wifiManager.autoConnect(boardSSID.c_str(), "enter123");
    if (!success)
    {
       Serial.println("Failed to connect");
@@ -698,7 +714,7 @@ void setupOSCIfNeeded()
 
    setUPWiFi();
    wifiManager.setAPCallback(configModeCallback);
-   if (!wifiManager.autoConnect("TeleAgriCulture Board", "enter123"))
+   if (!wifiManager.autoConnect(boardSSID.c_str(), "enter123"))
    {
       Serial.println("Failed to connect");
       ESP.restart();
@@ -886,7 +902,7 @@ void configButtonTask(void *parameter)
             esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(1));
             wifiManager.setCleanConnect(true);
             // start configuration portal
-            if (!wifiManager.startConfigPortal("TeleAgriCulture Board", "enter123"))
+            if (!wifiManager.startConfigPortal(boardSSID.c_str(), "enter123"))
             {
                Serial.println("failed to connect and hit timeout");
                delay(3000);
