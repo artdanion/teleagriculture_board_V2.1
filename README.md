@@ -15,7 +15,7 @@ On Linux/Mac use: `~/.platformio/penv/bin/python -m pip install intelhex`
 ----
 
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
->[current Firmware](https://github.com/artdanion/teleagriculture_board_V2.1/tree/main/Firmware) version 1.75
+>[current Firmware](https://github.com/artdanion/teleagriculture_board_V2.1/tree/main/Firmware) version 1.80
 
 >
 >**If you are using LORA please choose the right Firmware for your location / lora module**
@@ -86,6 +86,13 @@ The board supports LoRa upload for long-range, low-power data transmission.
 ### No Upload
 The board can operate in a mode where no data is uploaded, useful for local data processing or storage.
 
+### LIVE Mode (MQTT / OSC)
+The board can stream sensor data in real time over the local network — without uploading to the TAC server. Two protocols are supported:
+- **MQTT** — compatible with Home Assistant, Node-RED, and similar tools
+- **OSC** (Open Sound Control) — UDP-based, popular in Max/MSP, TouchDesigner, Pure Data
+
+The send rate is capped at 20 per second to avoid flooding the network.
+
 ### AP Mode
 When the board is not battery-powered, it operates in AP Mode. You can connect to the board's WiFi with the following credentials:
 - **SSID**: Teleagriculture DB
@@ -142,22 +149,34 @@ there is also a section about integrated sensors.
 
 ## Implemented Sensors
 
-- ADS1115
-- BH_1750
-- BME_280
-- BMP_280
-- BMP_680
-- DFR FLAME
-- DFR LIGHT
-- DFR LM35
-- DHT11
-- DHT22
-- DS18B20
-- LTR_390
-- MultiGasV1
-- MultiGasV2
-- RTCDS3231
-- SHT_21
-- TDS
-- VELM7700
+- **ADS1115** — 4-channel 16-bit ADC (I2C 0x48), used for aquaponic probes: ORP, dissolved oxygen, EC, pH
+- **BATTERY** — battery voltage read from onboard BATSENS pin
+- **BH_1745** — ROHM BH1745NUC RGBC color sensor, outputs Red / Green / Blue / Clear counts (I2C 0x38 / 0x39)
+- **BH_1750** — ambient light sensor, lux output (I2C 0x23 / 0x5C)
+- **BME_280** — temperature, humidity and barometric pressure (I2C)
+- **BMP_280** — temperature and barometric pressure (I2C)
+- **BMP_680** — temperature, humidity, pressure and VOC air quality index (I2C)
+- **CAP_SOIL** — capacitive soil moisture sensor (analog)
+- **CAP_GROOVE** — capacitive groove soil moisture sensor (analog)
+- **DFR FLAME** — DFRobot analog flame detection sensor
+- **DFR LIGHT** — DFRobot analog ambient light sensor
+- **DFR LM35** — DFRobot LM35 analog linear temperature sensor
+- **DHT11** — digital temperature and humidity sensor
+- **DHT22** — digital temperature and humidity sensor (higher accuracy than DHT11)
+- **DS18B20** — 1-Wire waterproof temperature sensor, supports multiple sensors on one bus
+- **LEVEL** — analog water level sensor
+- **LTR_390** — UV index and ambient light sensor (I2C 0x53)
+- **MultiGasV1** — Grove Multichannel Gas Sensor V1 (I2C 0x04) — H₂, CO, NO₂, NH₃, C₄H₁₀, C₃H₈, CH₄, C₂H₅OH
+- **MultiGasV2** — Grove Multichannel Gas Sensor V2 (I2C 0x08) — same gas channels, updated hardware
+- **PRE_LVL** — DFRobot throw-in liquid level transmitter (analog pressure-based depth sensor)
+- **RTCDS3231** — DS3231 real-time clock module with onboard temperature sensor (I2C 0x68)
+- **SERVO** — servo motor output *(control logic not yet implemented)*
+- **SHT_21** — temperature and humidity sensor (I2C 0x40)
+- **SOUND** — DFRobot Gravity analog sound level meter (dB)
+- **SPF_WINDVANE** — SparkFun Weather Meter Kit wind vane, 16-direction ADC lookup, output in degrees
+- **SPF_ANEMOMETER** — SparkFun Weather Meter Kit anemometer, pulse counting over 5 s, output in km/h
+- **TDS** — analog total dissolved solids sensor (water quality, ppm)
+- **UV_DFR** — DFRobot ML8511 analog UV sensor, outputs UV index
+- **VEML7700** — high-accuracy ambient light sensor, lux and white light (I2C 0x10)
+- **WS2812** — RGB LED strip output *(control logic not yet implemented)*
 
