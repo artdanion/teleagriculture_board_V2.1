@@ -303,6 +303,54 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
+            case RED_v:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case GREEN_v:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case BLUE_v:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case CLEAR_v:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case DIRECTION:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case SPEED:
+               message.addRawFloat(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               break;
             }
          }
       }

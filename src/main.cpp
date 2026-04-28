@@ -371,7 +371,7 @@ void wifi_sendData(void)
    }
 
    // 2) JSON-Dokument dimensionieren (Faustregel)
-   const size_t capacity = JSON_OBJECT_SIZE(nItems) + keyBytes + nItems * 16;
+   const size_t capacity = JSON_OBJECT_SIZE(nItems + 1) + keyBytes + nItems * 16 + 64;
    DynamicJsonDocument docMeasures(capacity);
 
    LOGD("build JSON: sensors=%u, items=%u, capacity=%u",
@@ -405,6 +405,11 @@ void wifi_sendData(void)
          docMeasures[m.data_name] = v;
       }
    }
+
+   char timeString[64];
+   getLocalTimeString(timeString, sizeof(timeString));
+   if (timeString[0] != '\0')
+      docMeasures["time"] = timeString;
 
    if (docMeasures.overflowed())
    {
@@ -780,7 +785,7 @@ void updateTimeHandle()
    if (instant_upload && newSensorDataAvailable)
    {
       static unsigned long lastInstantPush = 0;
-      const uint32_t minGap = 100; // ms, prevents flooding if sensors fire too fast
+      const uint32_t minGap = 50; // ms, caps LIVE mode at 20 sends/sec
 
       if (now - lastInstantPush >= minGap)
       {

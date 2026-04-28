@@ -97,6 +97,18 @@ ValueOrder getValueOrderFromString(String str)
     return ANGLE;
   if (str == "KOHM")
     return KOHM;
+  if (str == "RED_v")
+    return RED_v;
+  if (str == "GREEN_v")
+    return GREEN_v;
+  if (str == "BLUE_v")
+    return BLUE_v;
+  if (str == "CLEAR_v")
+    return CLEAR_v;
+  if (str == "DIRECTION")
+    return DIRECTION;
+  if (str == "SPEED")
+    return SPEED;
 
   return NOT;
 }
@@ -686,5 +698,70 @@ const char *proto_sensors = R"([
     "possible_i2c_add": {
       "default": "0x53"
     }
+  },
+  {
+    "sensor-id": 28,
+    "name": "BH_1745",
+    "con_typ": "I2C",
+    "returnCount": 4,
+    "measurements": [
+      {
+        "value": 1000,
+        "valueOrder": "RED_v",
+        "unit": "raw",
+        "data_name": "red"
+      },
+      {
+        "value": 1000,
+        "valueOrder": "GREEN_v",
+        "unit": "raw",
+        "data_name": "green"
+      },
+      {
+        "value": 1000,
+        "valueOrder": "BLUE_v",
+        "unit": "raw",
+        "data_name": "blue"
+      },
+      {
+        "value": 3000,
+        "valueOrder": "CLEAR_v",
+        "unit": "raw",
+        "data_name": "clear"
+      }
+    ],
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x38",
+      "alt_1": "0x39"
+    }
+  },
+  {
+    "sensor-id": 29,
+    "name": "SPF_WINDVANE",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "DIRECTION",
+        "unit": "deg",
+        "data_name": "wind_dir"
+      }
+    ]
+  },
+  {
+    "sensor-id": 30,
+    "name": "SPF_ANEMOMETER",
+    "con_typ": "ONE_WIRE",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "SPEED",
+        "unit": "km/h",
+        "data_name": "wind_spd"
+      }
+    ]
   }
 ])";

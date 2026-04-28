@@ -37,6 +37,7 @@ void setESP32timeFromRTC(const char* tz);
 void printRTCInfo();
 void printLocalTime();
 
+void getLocalTimeString(char *timeString, size_t size);
 int seconds_to_next_hour();
 int monthStrToInt(const String &month);
 void get_time_in_timezone(const char *timezone);

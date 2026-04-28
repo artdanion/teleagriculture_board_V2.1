@@ -30,9 +30,9 @@ Sensor Value:     `sensorVector[i].measurements[j].value`
 
 ## Sensors
 
-The teleAgriCulture Board V2.1 supports a variety of sensors through its connectors. The currently implemented sensors are listed in the `SensorsImplemented` enum in the `include/sensor_Board.hpp` file:
+The teleAgriCulture Board V2.1 supports a variety of sensors through its connectors. The currently implemented sensors are listed in the `SensorsImplemented` enum in `lib/init_TAC/src/def_Sensors.h`:
 
---> VERSION 1.09
+--> VERSION 1.80 (30 sensors)
 
 - BMP_280: A temperature and pressure sensor.
 - LEVEL: A water level sensor.
@@ -61,9 +61,13 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 - - ADC2: https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K=1__SKU_DFR0300
 - - ADC3: https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
 
+- BH_1745: ROHM BH1745NUC RGBC color sensor (I2C 0x38 / 0x39) — outputs Red, Green, Blue, Clear as uint16 counts
+- SPF_WINDVANE: SparkFun Weather Meter Kit wind vane — reads ADC voltage and maps to 16 compass directions (degrees)
+- SPF_ANEMOMETER: SparkFun Weather Meter Kit anemometer — counts pulses over 5 s and returns wind speed in km/h
 
 
-Each sensor has its own library and reading code in the `include/sensor_Read.hpp` file. The data from the sensors is stored in the `sensorVector` and can be accessed using the `sensorVector[i].measurements[j].value` syntax.
+
+Each sensor has its own reading code in the `include/sensor_Read.hpp` file. Simple I2C sensors use direct Wire communication without extra libraries. The data from the sensors is stored in the `sensorVector` and can be accessed using the `sensorVector[i].measurements[j].value` syntax.
 
 New sensors can be added by following the steps outlined in the [Adding new sensors](#adding-new-sensors) section.
 
@@ -71,12 +75,12 @@ New sensors can be added by following the steps outlined in the [Adding new sens
 
 To add new sensors, follow these steps:
 
-1. In `sensor_Board.hpp`:
-    - Add new `SensorName` to `ENUM SensorsImplemented` (use a name that has no conflicts with your sensor library).
-    - Add new sensor to `json` styled `proto_sensors` (use the same format).
-    - Add new `ENUM ValueOrder` if necessary. This also has to be added to `lora_sendData()` and `getValueOrderFromString()`. (Lora data gets sent in the format `<ValueOrder ENUM><Value>` for encoding/decoding).
-2. In `sensor_Read.hpp`:
-    - Include the SENSOR library.
+1. In `lib/init_TAC/src/def_Sensors.h` and `def_Sensors.cpp`:
+    - Add new `SensorName` to `ENUM SensorsImplemented` (use a name that has no conflicts with your sensor library). Increment `SENSORS_NUM` by 1.
+    - Add new sensor to the `proto_sensors` JSON string in `def_Sensors.cpp` (use the same format).
+    - Add new `ENUM ValueOrder` if necessary. This also has to be added to the switch in `lora_functions.cpp` (`lora_sendData()`) and to `getValueOrderFromString()` in `def_Sensors.cpp`. (LoRa data gets sent in the format `<ValueOrder ENUM><Value>` for encoding/decoding).
+2. In `include/sensor_Read.hpp`:
+    - For simple I2C sensors prefer direct Wire reads over adding a library (see BH_1745 or BH_1750 as examples).
     - Add implementation to the following functions corresponding to your sensor type with a case statement using your sensor ENUM:
         - `readI2C_Connectors()`
         - `readADC_Connectors()`
@@ -87,8 +91,7 @@ To add new sensors, follow these steps:
 3. Create a new sensor object at the end of your implementation like: `Sensor newSensor = allSensors[ENUM_SENSOR];` (using the prototype sensor)
 4. Add sensor measurement to the newSensor object like: `newSensor.measurements[0].value = value;`
 5. Push the new sensor object to the global sensorVector like: `sensorVector.push_back(newSensor);`
-6. Increase `SENSORS_NUM` in `include/sensor_Board.hpp` by 1.
-7. <mark>Share your success with the community :-) <mark>
+6. <mark>Share your success with the community :-) <mark>
 
 
 ## Wishlist
@@ -104,6 +107,10 @@ To add new sensors, follow these steps:
 - [x] display data in the browser (just in NO BATTERY MODE)
 - [ ] powermanagment field tests
 - [x] implement DS3231 RTC
+- [x] implement BH1745 RGBC color sensor
+- [x] implement SparkFun Weather Meter Kit (wind vane + anemometer)
+- [x] timestamp in WiFi JSON payload
+- [x] LIVE mode rate limiter (20 sends/sec)
 - [ ] implement WS2812 LED function and control logic
 - [ ] implement Servo function and control logic
 - [ ] sensor calibration option
@@ -120,6 +127,7 @@ for technical questions you can write me an email: artdanion at gmail.com
 ## Implemented Sensors
 
 - ADS1115
+- BH_1745 (Pimoroni / ROHM BH1745NUC RGBC color sensor, I2C 0x38 / 0x39)
 - BH_1750
 - BME_280
 - BMP_280
@@ -135,5 +143,20 @@ for technical questions you can write me an email: artdanion at gmail.com
 - MultiGasV2
 - RTCDS3231
 - SHT_21
+- SPF_WINDVANE (SparkFun Weather Meter Kit — wind direction via ADC, 16 compass directions)
+- SPF_ANEMOMETER (SparkFun Weather Meter Kit — wind speed via pulse counting, km/h)
 - TDS
-- VELM7700
+- VEML7700
+
+## WiFi Data Upload
+
+When the board uploads sensor data over WiFi, the JSON payload includes a `time` field with the current local timestamp (e.g. `"time": "2025-06-01 14:32:05 CEST"`). This requires a valid time source (NTP, RTC, or HTTP header sync).
+
+## LIVE Mode (MQTT / OSC)
+
+LIVE mode streams sensor data in real time over the local network — it does **not** upload to the TAC server. Two protocols are supported:
+
+- **MQTT**: publish/subscribe broker protocol, compatible with Home Assistant, Node-RED, etc.
+- **OSC** (Open Sound Control): UDP-based, popular in Max/MSP, TouchDesigner, Pure Data, etc.
+
+The rate is capped at **20 sends per second** (50 ms minimum gap) to avoid flooding the network.

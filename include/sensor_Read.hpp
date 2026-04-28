@@ -39,7 +39,6 @@
 #include <Adafruit_ADS1X15.h>
 #include "Adafruit_VEML7700.h"
 #include <LTR390.h>
-#include <hp_BH1750.h>
 #include <SHT2x.h>
 #include <Multichannel_Gas_GMXXX.h>
 #include <MiCS6814-I2C.h>
@@ -49,7 +48,11 @@
 #include "drivers/DSTherm.h"
 #include "utils/Placeholder.h"
 #include <GravityTDS.h>
-#include <RTClib.h>
+
+#define SPF_ANEMOMETER_MEASURE_INTERVAL 5000  // ms measurement window
+#define SPF_ANEMOMETER_KMH_PER_HERTZ    2.4f  // km/h per Hz (SparkFun Weather Meter Kit)
+#define SPF_WINDVANE_NUM_ANGLES         16
+#define SPF_WINDVANE_DEGREES_PER_STEP   22.5f
 
 #define VREF 3.3 // analog reference voltage(Volt) of the ADC
 #define ADC_RES 4095
@@ -467,10 +470,24 @@ void readI2C_Connectors()
             String addrStr = allSensors[BH_1750].possible_i2c_add[I2C_con_table[j].addrIndex];
             uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
 
-            hp_BH1750 lightSensor;
-            lightSensor.begin(addr, &Wire);
-            lightSensor.start();              // starts a measurement
-            float lux = lightSensor.getLux(); //  waits until a conversion finished
+            // One-Time High Resolution Mode (1 lx resolution, max 180 ms)
+            Wire.beginTransmission(addr);
+            Wire.write(0x20);
+            if (Wire.endTransmission() != 0)
+            {
+                Serial.println("BH1750: not found on this address");
+                break;
+            }
+            delay(180);
+
+            Wire.requestFrom(addr, (uint8_t)2);
+            if (Wire.available() < 2)
+            {
+                Serial.println("BH1750: read failed");
+                break;
+            }
+            uint16_t raw = ((uint16_t)Wire.read() << 8) | Wire.read();
+            float lux = raw / 1.2f;
 
             Sensor newSensor = allSensors[BH_1750];
             newSensor.measurements[0].value = lux;
@@ -481,11 +498,26 @@ void readI2C_Connectors()
 
         case RTCDS3231:
         {
-            RTC_DS3231 rtc;
-            rtc.begin();
+            // DS3231 has fixed address 0x68 — temperature in registers 0x11 (MSB) and 0x12 (LSB)
+            Wire.beginTransmission(0x68);
+            Wire.write(0x11);
+            if (Wire.endTransmission() != 0)
+            {
+                Serial.println("DS3231: not found");
+                break;
+            }
+            Wire.requestFrom((uint8_t)0x68, (uint8_t)2);
+            if (Wire.available() < 2)
+            {
+                Serial.println("DS3231: read failed");
+                break;
+            }
+            int8_t msb = (int8_t)Wire.read();
+            uint8_t lsb = Wire.read();
+            float temp = msb + ((lsb >> 6) * 0.25f);
 
             Sensor newSensor = allSensors[RTCDS3231];
-            newSensor.measurements[0].value = rtc.getTemperature();
+            newSensor.measurements[0].value = temp;
             sensorVector.push_back(newSensor);
         }
         break;
@@ -546,6 +578,71 @@ void readI2C_Connectors()
             ltr.setMode(LTR390_MODE_UVS);
             delay(50);
             newSensor.measurements[1].value = ltr.getUVI();
+
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case BH_1745:
+        {
+            // ROHM BH1745NUC RGBC color sensor (Pimoroni BH1745 breakout uses this chip)
+            // Addresses: 0x38 (ADDR pin low) or 0x39 (ADDR pin high)
+            String addrStr = allSensors[BH_1745].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            // Software reset
+            Wire.beginTransmission(addr);
+            Wire.write(0x40); // SYSTEM_CONTROL
+            Wire.write(0x80); // SW_RESET bit
+            if (Wire.endTransmission() != 0)
+            {
+                Serial.println("BH1745: not found on this address");
+                break;
+            }
+            delay(10);
+
+            // MODE_CONTROL1: measurement time 160 ms
+            Wire.beginTransmission(addr);
+            Wire.write(0x41);
+            Wire.write(0x00);
+            Wire.endTransmission();
+
+            // MODE_CONTROL2: RGBC enable (bit4), gain 16x (bits[1:0] = 0b10)
+            Wire.beginTransmission(addr);
+            Wire.write(0x42);
+            Wire.write(0x12);
+            Wire.endTransmission();
+
+            // MODE_CONTROL3: always 0x02
+            Wire.beginTransmission(addr);
+            Wire.write(0x43);
+            Wire.write(0x02);
+            Wire.endTransmission();
+
+            delay(200); // wait for first 160 ms measurement to finish
+
+            // Read 8 bytes of RGBC data starting at register 0x50
+            Wire.beginTransmission(addr);
+            Wire.write(0x50);
+            Wire.endTransmission();
+            Wire.requestFrom(addr, (uint8_t)8);
+
+            if (Wire.available() < 8)
+            {
+                Serial.println("BH1745: RGBC read failed");
+                break;
+            }
+
+            uint16_t r = Wire.read() | ((uint16_t)Wire.read() << 8);
+            uint16_t g = Wire.read() | ((uint16_t)Wire.read() << 8);
+            uint16_t b = Wire.read() | ((uint16_t)Wire.read() << 8);
+            uint16_t c = Wire.read() | ((uint16_t)Wire.read() << 8);
+
+            Sensor newSensor = allSensors[BH_1745];
+            newSensor.measurements[0].value = r;
+            newSensor.measurements[1].value = g;
+            newSensor.measurements[2].value = b;
+            newSensor.measurements[3].value = c;
 
             sensorVector.push_back(newSensor);
         }
@@ -939,6 +1036,34 @@ void readADC_Connectors()
         }
         break;
 
+        case SPF_WINDVANE:
+        {
+            // SparkFun Weather Meter Kit wind vane — 4.7kΩ pullup on SIGN pin
+            // 16-direction ADC calibration table (0° … 337.5°, steps of 22.5°)
+            static const uint16_t vaneADC[SPF_WINDVANE_NUM_ANGLES] = {
+                3580, 2267, 2473,  590,  653,  467, 1210,  866,
+                1750, 1541, 3048, 2945, 4095, 3734, 3950, 3293
+            };
+
+            int windVanePin = (i == 0) ? ANALOG1 : (i == 1) ? ANALOG2 : ANALOG3;
+            pinMode(windVanePin, INPUT);
+
+            uint16_t raw = (uint16_t)analogRead(windVanePin);
+
+            int16_t closestDiff = 32767;
+            uint8_t closestIdx  = 0;
+            for (uint8_t k = 0; k < SPF_WINDVANE_NUM_ANGLES; k++)
+            {
+                int16_t diff = abs((int16_t)vaneADC[k] - (int16_t)raw);
+                if (diff < closestDiff) { closestDiff = diff; closestIdx = k; }
+            }
+
+            Sensor newSensor = allSensors[SPF_WINDVANE];
+            newSensor.measurements[0].value = closestIdx * SPF_WINDVANE_DEGREES_PER_STEP;
+            sensorVector.push_back(newSensor);
+        }
+        break;
+
         default:
             break;
         }
@@ -1084,6 +1209,45 @@ void readOneWire_Connectors()
                     Serial.print(temperature);
                 }
             }
+        }
+        break;
+
+        case SPF_ANEMOMETER:
+        {
+            // SparkFun Weather Meter Kit anemometer — counts reed-switch pulses over 5 s
+            int anemometerPin = (OWi == 0) ? ONEWIRE_1 : (OWi == 1) ? ONEWIRE_2 : ONEWIRE_3;
+            pinMode(anemometerPin, INPUT);
+
+            unsigned long startTime     = millis();
+            unsigned long firstPulse    = 0;
+            unsigned long lastPulse     = 0;
+            int           pulseCount    = 0;
+            int           lastState     = HIGH;
+
+            while (millis() < startTime + SPF_ANEMOMETER_MEASURE_INTERVAL)
+            {
+                int state = digitalRead(anemometerPin);
+                if (state == LOW && lastState == HIGH)
+                {
+                    if (pulseCount == 0) firstPulse = millis();
+                    lastPulse = millis();
+                    pulseCount++;
+                    delay(5); // debounce
+                }
+                lastState = state;
+            }
+
+            float speed = 0.0f;
+            if (pulseCount > 1)
+            {
+                float intervalSec = (lastPulse - firstPulse) / 1000.0f;
+                if (intervalSec > 0)
+                    speed = SPF_ANEMOMETER_KMH_PER_HERTZ / (intervalSec / (pulseCount - 1));
+            }
+
+            Sensor newSensor = allSensors[SPF_ANEMOMETER];
+            newSensor.measurements[0].value = speed;
+            sensorVector.push_back(newSensor);
         }
         break;
 

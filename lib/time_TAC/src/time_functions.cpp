@@ -28,6 +28,17 @@ const long interval2 = 5 * mS_TO_MIN_FACTOR;
 
 RTC_DS3231 rtc;
 
+void getLocalTimeString(char *timeString, size_t size)
+{
+   struct tm t;
+   if (!getLocalTime(&t))
+   {
+      strncpy(timeString, "", size);
+      return;
+   }
+   strftime(timeString, size, "%Y-%m-%d %H:%M:%S %Z", &t);
+}
+
 void setUploadTime()
 {
    getLocalTime(&timeInfo);

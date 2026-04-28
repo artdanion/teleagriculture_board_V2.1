@@ -146,7 +146,13 @@ const ValueOrder = {
   UV_I: 25,
   RGB: 26,
   ANGLE: 27,
-  KOHM: 28
+  KOHM: 28,
+  RED_v: 29,
+  GREEN_v: 30,
+  BLUE_v: 31,
+  CLEAR_v: 32,
+  DIRECTION: 33,
+  SPEED: 34
 };
 
 
@@ -158,35 +164,41 @@ decoders = {
 };
 
 const valueOrders = [
-  { data_name: "Battery", encoding: "temp" },     // VOLT
-  { data_name: "temp",    encoding: "temp" },     // TEMP
-  { data_name: "hum",     encoding: "humidity" }, // HUMIDITY
-  { data_name: "press",   encoding: "rawfloat" }, // PRESSURE
-  { data_name: "height",  encoding: "temp" },     // DISTANCE (C++ nutzt addTemperature!)
-  { data_name: "TDS",     encoding: "uint16" },   // TDSv
-  { data_name: "MOIS",    encoding: "uint16" },   // MOIS
-  { data_name: "LUX",     encoding: "uint16" },     // LUX (geändert!)
-  { data_name: "Ambient", encoding: "uint16" },   // AMBIENT
-  { data_name: "H2",      encoding: "uint16" },   // H2v
-  { data_name: "CO",      encoding: "uint16" },   // COv
-  { data_name: "CO2",     encoding: "uint16" },   // CO2v
-  { data_name: "NO2",     encoding: "uint16" },   // NO2v
-  { data_name: "NH3",     encoding: "uint16" },   // NH3v
-  { data_name: "C4H10",   encoding: "uint16" },   // C4H10v
-  { data_name: "C3H8",    encoding: "uint16" },   // C3H8v
-  { data_name: "CH4",     encoding: "uint16" },   // CH4v
-  { data_name: "C2H5OH",  encoding: "uint16" },   // C2H5OHv
-  { data_name: "alt",     encoding: "uint16" },   // ALTITUDE
-  { data_name: "OPR",     encoding: "rawfloat" }, // MV
-  { data_name: "DO",      encoding: "temp" },     // MGL
-  { data_name: "EC",      encoding: "temp" },     // MSCM
-  { data_name: "PH",      encoding: "temp" },     // PH
-  { data_name: "SOUND",   encoding: "temp" },     // DBA
-  { data_name: "DEPTH",   encoding: "rawfloat" }, // DEPTH
-  { data_name: "UV_I",    encoding: "temp" },     // UV_I
-  { data_name: "RGB",     encoding: "uint16" },   // RGB
-  { data_name: "ANGLE",   encoding: "temp" },     // ANGLE
-  { data_name: "KOHM",    encoding: "rawfloat" }      // KOHM (geändert!)
+  { data_name: "Battery",   encoding: "temp"     }, // 0  VOLT
+  { data_name: "temp",      encoding: "temp"     }, // 1  TEMP
+  { data_name: "hum",       encoding: "humidity" }, // 2  HUMIDITY
+  { data_name: "press",     encoding: "rawfloat" }, // 3  PRESSURE
+  { data_name: "height",    encoding: "temp"     }, // 4  DISTANCE
+  { data_name: "TDS",       encoding: "uint16"   }, // 5  TDSv
+  { data_name: "MOIS",      encoding: "uint16"   }, // 6  MOIS
+  { data_name: "LUX",       encoding: "uint16"   }, // 7  LUX
+  { data_name: "Ambient",   encoding: "uint16"   }, // 8  AMBIENT
+  { data_name: "H2",        encoding: "uint16"   }, // 9  H2v
+  { data_name: "CO",        encoding: "uint16"   }, // 10 COv
+  { data_name: "CO2",       encoding: "uint16"   }, // 11 CO2v
+  { data_name: "NO2",       encoding: "uint16"   }, // 12 NO2v
+  { data_name: "NH3",       encoding: "uint16"   }, // 13 NH3v
+  { data_name: "C4H10",     encoding: "uint16"   }, // 14 C4H10v
+  { data_name: "C3H8",      encoding: "uint16"   }, // 15 C3H8v
+  { data_name: "CH4",       encoding: "uint16"   }, // 16 CH4v
+  { data_name: "C2H5OH",    encoding: "uint16"   }, // 17 C2H5OHv
+  { data_name: "alt",       encoding: "uint16"   }, // 18 ALTITUDE
+  { data_name: "OPR",       encoding: "rawfloat" }, // 19 MV
+  { data_name: "DO",        encoding: "temp"     }, // 20 MGL
+  { data_name: "EC",        encoding: "temp"     }, // 21 MSCM
+  { data_name: "PH",        encoding: "temp"     }, // 22 PH
+  { data_name: "SOUND",     encoding: "temp"     }, // 23 DBA
+  { data_name: "DEPTH",     encoding: "rawfloat" }, // 24 DEPTH
+  { data_name: "UV_I",      encoding: "temp"     }, // 25 UV_I
+  { data_name: "RGB",       encoding: "uint16"   }, // 26 RGB
+  { data_name: "ANGLE",     encoding: "temp"     }, // 27 ANGLE
+  { data_name: "KOHM",      encoding: "rawfloat" }, // 28 KOHM
+  { data_name: "red",       encoding: "uint16"   }, // 29 RED_v
+  { data_name: "green",     encoding: "uint16"   }, // 30 GREEN_v
+  { data_name: "blue",      encoding: "uint16"   }, // 31 BLUE_v
+  { data_name: "clear",     encoding: "uint16"   }, // 32 CLEAR_v
+  { data_name: "wind_dir",  encoding: "uint16"   }, // 33 DIRECTION (degrees 0–360)
+  { data_name: "wind_spd",  encoding: "rawfloat" }  // 34 SPEED (km/h)
 ];
 
 function decodeUplink(input) {
@@ -223,4 +235,3 @@ function decodeUplink(input) {
     errors: []
   };
 }
-
