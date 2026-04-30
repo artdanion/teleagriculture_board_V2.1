@@ -1,14 +1,17 @@
 /*
-
-    Sensor Calibration for Aquaponic Sensors (on ADS1115 4-Channel-Board)
-
-    - ADS1115: for KlimaOasis aquaponic system a 4-channel ADC is added
-    - - ADC0: https://wiki.dfrobot.com/Gravity_Analog_ORP_Sensor_PRO_SKU_SEN0464
-    - - ADC1: https://wiki.dfrobot.com/Gravity__Analog_Dissolved_Oxygen_Sensor_SKU_SEN0237
-    - - ADC2: https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K=1__SKU_DFR0300
-    - - ADC3: https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
-
-*/
+ * ADS1115 Water Quality Sensors — Standalone Calibration Sketch
+ * TeleAgriCulture Board V2.1
+ *
+ * Legacy standalone sketch for bench calibration without WiFi.
+ * Flash as a separate PlatformIO project, use the LEFT button to step
+ * through calibration states, and read values from Serial Monitor (115200 baud).
+ *
+ *   States: START → READ_ORP → DO_FIRST → DO_SECOND → EC → PH → FINISHED
+ *
+ * For full calibration documentation including the web wizard, formulas,
+ * buffer solutions and troubleshooting see:
+ *   Docu/calibration_ADS1115.md
+ */
 
 #include <Arduino.h>
 #include "esp_system.h"

@@ -30,6 +30,7 @@
 #define LOG_TAG "SENSOR"
 
 #include <Arduino.h>
+#include <cal_values.h>
 #include <esp_adc_cal.h>
 #include <soc/adc_channel.h>
 #include <unordered_map>
@@ -120,36 +121,16 @@ static bool printId(const OneWireNg::Id &id);
 static void printScratchpad(const DSTherm::Scratchpad &scrpd);
 // OneWireNg
 
-// calibration values for: Gravity: Dissolved Oxygen Probe
-#define TWO_POINT_CALIBRATION 1
-// Single point calibration needs to be filled CAL1_V and CAL1_T
-#define CAL1_V (1600) // mv
-#define CAL1_T (25)   // ℃
-// Two-point calibration needs to be filled CAL2_V and CAL2_T
-// CAL1 High temperature point, CAL2 Low temperature point
-#define CAL2_V (1300) // mv
-#define CAL2_T (15)   // ℃
-
+// DO saturation table: index = temperature in °C (0..40)
 const uint16_t DO_Table[41] = {
     14460, 14220, 13820, 13440, 13090, 12740, 12420, 12110, 11810, 11530,
     11260, 11010, 10770, 10530, 10300, 10080, 9860, 9660, 9460, 9270,
     9080, 8900, 8730, 8570, 8410, 8250, 8110, 7960, 7820, 7690,
     7560, 7430, 7300, 7180, 7070, 6950, 6840, 6730, 6630, 6530, 6410};
-// calibration values for: Gravity: Dissolved Oxygen Probe
 
-// calibration values for: Gravity: Analog Electrical Conductivity Sensor
-#define RES2 820.0
-#define ECREF 200.0
-float kvalue = 1.0;
-float kvalueLow = 1.02;
-float kvalueHigh = 1.22;
-// calibration values for: Gravity: Analog Electrical Conductivity Sensor
-
-// calibration values for: Gravity: Analog pH Sensor / Meter Kit V2
-float phValue = 7.0;
-float acidVoltage = 2032.44;   // buffer solution 4.0 at 22C
-float neutralVoltage = 1455.0; // buffer solution 7.0 at 22C
-// calibration values for: Gravity: Analog pH Sensor / Meter Kit V2
+// EC constants (probe geometry, not user-calibrated)
+#define RES2  820.0f
+#define ECREF 200.0f
 
 // Returns true if any active measurement slot (0..returnCount-1) holds NaN
 static bool hasNaN(const Sensor &s) {
@@ -198,7 +179,8 @@ void sensorRead()
         Sensor newSensor = allSensors[BATTERY];
         newSensor.measurements->value = getBatteryVoltage();
         LOGD("Battery: %.2f V", (float)newSensor.measurements->value);
-        sensorVector.push_back(newSensor);
+        if (!hasNaN(newSensor))
+            sensorVector.push_back(newSensor);
 
         // Serial.println("\nSensorRead.....");
         DEBUG_PRINT("Sensor Read ....");
@@ -266,6 +248,7 @@ void readI2C_Connectors()
                 newSensor.measurements[0].value = bmp.readTemperature();
                 newSensor.measurements[1].value = (double)(bmp.readPressure() / 100.00F);
                 newSensor.measurements[2].value = bmp.readAltitude(SEALEVELPRESSURE_HPA);
+                temperature = (float)newSensor.measurements[0].value;
                 LOGI("BMP280: temp=%.2f C  press=%.2f hPa  alt=%.1f m",
                      (float)newSensor.measurements[0].value,
                      (float)newSensor.measurements[1].value,
@@ -276,7 +259,13 @@ void readI2C_Connectors()
                 LOGW("BMP280: forced measurement failed!");
             }
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("BMP280: NaN — not added to sensor vector");
+            else
+                if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -304,6 +293,7 @@ void readI2C_Connectors()
             newSensor.measurements[1].value = bme.readTemperature();
             newSensor.measurements[2].value = (double)(bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
+            temperature = (float)newSensor.measurements[1].value;
 
             LOGI("BME280: hum=%.1f%%  temp=%.2f C  press=%.2f hPa  alt=%.1f m",
                  (float)newSensor.measurements[0].value,
@@ -311,7 +301,13 @@ void readI2C_Connectors()
                  (float)newSensor.measurements[2].value,
                  (float)newSensor.measurements[3].value);
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("BME280: NaN — not added to sensor vector");
+            else
+                if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -364,7 +360,10 @@ void readI2C_Connectors()
             Sensor newSensor = allSensors[LEVEL];
             newSensor.measurements[0].value = trig_section * 5;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -384,7 +383,10 @@ void readI2C_Connectors()
             newSensor.measurements[0].value = veml.readLux(VEML_LUX_AUTO);
             newSensor.measurements[1].value = veml.readALS();
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -411,7 +413,7 @@ void readI2C_Connectors()
             adc2 = ads.readADC_SingleEnded(2);
             adc3 = ads.readADC_SingleEnded(3);
 
-            volts0 = (adc0 * 0.125) - 1989; // adc*resolution 1gain - offset (-2480 on 5V)
+            volts0 = (adc0 * 0.125f) + cal_ORP_offset; // ORP: raw mV + calibrated offset
             volts1 = (adc1 * 0.125);        // adc*resolution 1gain
             volts2 = (adc2 * 0.125);        // adc*resolution 1gain
             volts3 = (adc3 * 0.125);        // adc*resolution 1gain
@@ -433,45 +435,29 @@ void readI2C_Connectors()
             // ORP calc
             newSensor.measurements[0].value = volts0; // ORP in mV
 
-            // DO calc
-            if (TWO_POINT_CALIBRATION == 0)
+            // DO calc — single-point calibration using cal_DO_sat_mV @ cal_DO_sat_T
             {
-                uint16_t V_saturation = (uint32_t)CAL1_V + (uint32_t)35 * temperature - (uint32_t)CAL1_T * 35;
-                newSensor.measurements[1].value = (volts1 * DO_Table[int(temperature)] / V_saturation);
-            }
-            else
-            {
-                uint16_t V_saturation = (int16_t)((int8_t)temperature - CAL2_T) * ((uint16_t)CAL1_V - CAL2_V) / ((uint8_t)CAL1_T - CAL2_T) + CAL2_V;
-                newSensor.measurements[1].value = (volts1 * DO_Table[int(temperature)] / V_saturation);
+                int t_idx = constrain((int)temperature, 0, 40);
+                uint16_t V_saturation = (uint16_t)(cal_DO_sat_mV + 35.0f * (temperature - cal_DO_sat_T));
+                newSensor.measurements[1].value = (volts1 * DO_Table[t_idx] / (float)V_saturation);
             }
 
             // EC calc
-            float value = 0, valueTemp = 0, rawEC = 0;
-
+            float value = 0, rawEC = 0;
             rawEC = volts2 / RES2 / ECREF;
-            valueTemp = rawEC * kvalue;
-
-            if (valueTemp > 2.5)
-            {
-                kvalue = kvalueHigh;
-            }
-            else if (valueTemp < 2.0)
-            {
-                kvalue = kvalueLow;
-            }
-
-            value = rawEC * kvalue;                                // calculate the EC value after automatic shift
-            value = value / (1.0 + 0.0185 * (temperature - 25.0)); // temperature compensation
+            value = rawEC * cal_EC_kvalue;
+            value = value / (1.0f + 0.0185f * (temperature - 25.0f)); // temperature compensation
             newSensor.measurements[2].value = value;
 
-            // pH calc
-            float slope = (7.0 - 4.0) / ((neutralVoltage - 1500.0) / 3.0 - (acidVoltage - 1500.0) / 3.0); // two point: (_neutralVoltage,7.0),(_acidVoltage,4.0)
-            float intercept = 7.0 - slope * (neutralVoltage - 1500.0) / 3.0;
+            // pH calc — two-point using cal buffers (pH 7.0 neutral, pH 4.0 acid)
+            float slope     = (7.0f - 4.0f) / ((cal_pH_neutral - 1500.0f) / 3.0f - (cal_pH_acid - 1500.0f) / 3.0f);
+            float intercept = 7.0f - slope * (cal_pH_neutral - 1500.0f) / 3.0f;
+            newSensor.measurements[3].value = slope * (volts3 - 1500.0f) / 3.0f + intercept;
 
-            phValue = slope * (volts3 - 1500.0) / 3.0 + intercept; // y = k*x + b
-            newSensor.measurements[3].value = phValue;
-
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -486,7 +472,10 @@ void readI2C_Connectors()
             newSensor.measurements[0].value = temp;
             newSensor.measurements[1].value = humi;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -517,7 +506,10 @@ void readI2C_Connectors()
             Sensor newSensor = allSensors[BH_1750];
             newSensor.measurements[0].value = lux;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -543,7 +535,10 @@ void readI2C_Connectors()
 
             Sensor newSensor = allSensors[RTCDS3231];
             newSensor.measurements[0].value = temp;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -570,8 +565,15 @@ void readI2C_Connectors()
             newSensor.measurements[2].value = (double)(bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
             newSensor.measurements[4].value = (bme.gas_resistance / 1000.0);
+            temperature = (float)newSensor.measurements[0].value;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("BME680: NaN — not added to sensor vector");
+            else
+                if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -604,7 +606,10 @@ void readI2C_Connectors()
             delay(50);
             newSensor.measurements[1].value = ltr.getUVI();
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -669,7 +674,10 @@ void readI2C_Connectors()
             newSensor.measurements[2].value = b;
             newSensor.measurements[3].value = c;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -732,7 +740,10 @@ void readADC_Connectors()
             Sensor newSensor = allSensors[TDS];
             newSensor.measurements[0].value = tdsValue;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
 
             // pinMode(tdsSensorPin, INPUT);
 
@@ -789,15 +800,15 @@ void readADC_Connectors()
 
             pinMode(cap_SoilPin, INPUT);
 
-            const int AirValue = 2963;
-            const int WaterValue = 1044;
-            int soilmoisturepercent = 0;
-            soilmoisturepercent = map(analogRead(cap_SoilPin), AirValue, WaterValue, 0, 100);
+            int soilmoisturepercent = map(analogRead(cap_SoilPin), cal_soil_air, cal_soil_water, 0, 100);
 
             Sensor newSensor = allSensors[CAP_SOIL];
             newSensor.measurements[0].value = soilmoisturepercent;
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -825,7 +836,10 @@ void readADC_Connectors()
             Sensor newSensor = allSensors[CAP_GROOVE];
             newSensor.measurements[0].value = analogRead(cap_GroovePin);
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -861,7 +875,10 @@ void readADC_Connectors()
 
             Sensor newSensor = allSensors[SOUND];
             newSensor.measurements[0].value = ((float)millivolts / 1000.0) * 50.0; // mV to decibel value by *50.0
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -899,7 +916,10 @@ void readADC_Connectors()
             dataCurrent = (float)millivolts / 120.0;                               // Sense Resistor:120ohm
             depth = (dataCurrent - CURRENT_INIT) * (RANGE / DENSITY_WATER / 16.0); // Calculate depth from current readings
             newSensor.measurements[0].value = depth;                               // depth in mm
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -940,7 +960,10 @@ void readADC_Connectors()
             float uvIntensity = mapfloat(((float)millivolts / 1000.0), 0.98, 2.9, 0.0, 15.0);
 
             newSensor.measurements[0].value = uvIntensity;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -979,7 +1002,10 @@ void readADC_Connectors()
             int light = mapfloat(((float)millivolts / 1000.0), 0.01, 3.3, 0.0, 1000.0);
 
             newSensor.measurements[0].value = light;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1018,7 +1044,10 @@ void readADC_Connectors()
             float temp = millivolts / 10;
 
             newSensor.measurements[0].value = temp;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1057,7 +1086,10 @@ void readADC_Connectors()
             float temp = millivolts;
 
             newSensor.measurements[0].value = temp;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1085,7 +1117,10 @@ void readADC_Connectors()
 
             Sensor newSensor = allSensors[SPF_WINDVANE];
             newSensor.measurements[0].value = closestIdx * SPF_WINDVANE_DEGREES_PER_STEP;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1145,7 +1180,10 @@ void readOneWire_Connectors()
                 LOGI("DHT22 pin=%d: temp=%.1f C  hum=%.1f%%", dht22SensorPin,
                      (float)newSensor.measurements[0].value, (float)newSensor.measurements[1].value);
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1184,7 +1222,10 @@ void readOneWire_Connectors()
                 LOGI("DHT11 pin=%d: temp=%.1f C  hum=%.1f%%", dht11SensorPin,
                      (float)newSensor.measurements[0].value, (float)newSensor.measurements[1].value);
 
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1244,9 +1285,13 @@ void readOneWire_Connectors()
                     Sensor newSensor = allSensors[DS18B20];
 
                     newSensor.measurements[0].value = static_cast<double>(temp) / 1000.0;
-                    sensorVector.push_back(newSensor);
-                    temperature = float(newSensor.measurements[0].value);
-                    LOGI("DS18B20 pin=%d: temp=%.3f C (used for TDS compensation)", ds18b20SensorPin, temperature);
+                    if (hasNaN(newSensor)) {
+                        LOGW("DS18B20: NaN — not added to sensor vector");
+                    } else {
+                        sensorVector.push_back(newSensor);
+                        temperature = float(newSensor.measurements[0].value);
+                        LOGI("DS18B20 pin=%d: temp=%.3f C (used for TDS compensation)", ds18b20SensorPin, temperature);
+                    }
                 }
             }
         }
@@ -1287,7 +1332,10 @@ void readOneWire_Connectors()
 
             Sensor newSensor = allSensors[SPF_ANEMOMETER];
             newSensor.measurements[0].value = speed;
-            sensorVector.push_back(newSensor);
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
         }
         break;
 
@@ -1396,7 +1444,10 @@ void readI2C_5V_Connector()
 
         newSensor.measurements[1].value = PPM;
 
-        sensorVector.push_back(newSensor);
+        if (hasNaN(newSensor))
+            LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+        else
+            sensorVector.push_back(newSensor);
 
         Wire.end();
     }
@@ -1423,7 +1474,10 @@ void readI2C_5V_Connector()
         newSensor.measurements[6].value = multiGasV1.measureH2();
         newSensor.measurements[7].value = multiGasV1.measureC2H5OH();
 
-        sensorVector.push_back(newSensor);
+        if (hasNaN(newSensor))
+            LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+        else
+            sensorVector.push_back(newSensor);
 
         multiGasV1.powerOff();
     }

@@ -10,9 +10,72 @@ To build the teleAgriCulture Board V2.1 project follow these steps:
 4. make sure that you choose the right lora-region build-flag in `platformio.ini` file
 5. Build and upload the project to your ESP32-S3 board.
 
-Once the project is uploaded to the board, you can access the Config Portal Access Point with the SSID `TeleAgriCulture Board` and password `enter123`. From there, you can configure the board and view sensor data.
+Once the project is uploaded to the board, a unique access point is created for each board. The SSID is printed to the Serial Monitor on boot and shown on the TFT display. See the [Accessing the Board](#accessing-the-board) section for details.
  
 <mark>!! to build this project, take care that board_credentials.h is in the include folder (gets ignored by git)</mark>
+
+## Accessing the Board
+
+Every board has a **unique SSID** derived from the last 6 hex characters of its MAC address:
+
+```
+SSID:      TAC-XXXXXX   (e.g. TAC-A3F7C2)
+Password:  enter123
+```
+
+The full SSID is printed to the Serial Monitor at boot and shown on the TFT display.  
+The same SSID is used for both the Config Portal and the Dashboard AP.
+
+### Config Portal
+
+Opens automatically on first boot, after a **double-reset**, or by holding the BOOT button for > 5 s.
+
+1. Connect your phone or laptop to `TAC-XXXXXX` / `enter123`
+2. A captive portal opens automatically (or navigate to `http://192.168.4.1`)
+3. Select your WiFi network, enter credentials, configure upload settings
+4. Save — the board reboots and connects to your network
+
+### Dashboard (sensor data + web UI)
+
+The board creates the same AP (`TAC-XXXXXX`) during normal operation for local access without a router.
+
+| How to connect | Address |
+|---|---|
+| Via the board's own AP | `http://192.168.4.1` |
+| Via your local WiFi (mDNS) | `http://esp32.local` |
+| Via your local WiFi (IP) | IP shown on TFT display |
+
+The dashboard shows live sensor readings, uptime, board ID, and upload target.  
+It refreshes automatically every 15 seconds.
+
+### Calibration Wizard
+
+Navigate to `/calibrate` on the dashboard address:
+
+```
+http://192.168.4.1/calibrate        (via board AP)
+http://esp32.local/calibrate        (via local WiFi)
+```
+
+Select a sensor and follow the step-by-step wizard. Live ADC readings update every 2 s.  
+→ See [calibration_ADS1115.md](calibration_ADS1115.md) for full documentation.
+
+### LIVE Mode (MQTT / OSC)
+
+Configure LIVE mode in the Config Portal under the **LIVE** tab. The board must be connected to your WiFi network.
+
+**MQTT:**
+- Set broker IP, port (default 1883), and topic
+- Data is published as JSON to `<topic>/<data_name>`
+- Compatible with Home Assistant, Node-RED, MQTT Explorer, etc.
+
+**OSC:**
+- Set target IP and port
+- Each measurement is sent as an individual OSC message: `/tac/<data_name> <value>`
+- Compatible with Max/MSP, TouchDesigner, Pure Data, etc.
+
+Rate is capped at **20 sends/second** (50 ms minimum gap).  
+LIVE mode does **not** upload to the TAC server — it is local network only.
 
 ## Main program
 
@@ -55,11 +118,11 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 - LM35 temperature sensor https://wiki.dfrobot.com/DFRobot_LM35_Linear_Temperature_Sensor__SKU_DFR0023_   //not tested now
 - DFRobot Analog Ambient Light Sensor https://wiki.dfrobot.com/DFRobot_Ambient_Light_Sensor_SKU_DFR0026   //not tested now
 
-- ADS1115: for KlimaOasis aquaponic system a 4-channel ADC is added
-- - ADC0: https://wiki.dfrobot.com/Gravity_Analog_ORP_Sensor_PRO_SKU_SEN0464
-- - ADC1: https://wiki.dfrobot.com/Gravity__Analog_Dissolved_Oxygen_Sensor_SKU_SEN0237
-- - ADC2: https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K=1__SKU_DFR0300
-- - ADC3: https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
+- **ADS1115** *(Advanced — requires optional 4-channel ADC module)*: water quality sensors for aquaponic / hydroponic systems — see [calibration_ADS1115.md](calibration_ADS1115.md)
+  - ADC0: ORP / Redox — https://wiki.dfrobot.com/Gravity_Analog_ORP_Sensor_PRO_SKU_SEN0464
+  - ADC1: DO / Dissolved Oxygen — https://wiki.dfrobot.com/Gravity__Analog_Dissolved_Oxygen_Sensor_SKU_SEN0237
+  - ADC2: EC / Conductivity — https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K=1__SKU_DFR0300
+  - ADC3: pH — https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2
 
 - BH_1745: ROHM BH1745NUC RGBC color sensor (I2C 0x38 / 0x39) — outputs Red, Green, Blue, Clear as uint16 counts
 - SPF_WINDVANE: SparkFun Weather Meter Kit wind vane — reads ADC voltage and maps to 16 compass directions (degrees)
@@ -113,12 +176,13 @@ To add new sensors, follow these steps:
 - [x] LIVE mode rate limiter (20 sends/sec)
 - [ ] implement WS2812 LED function and control logic
 - [ ] implement Servo function and control logic
-- [ ] sensor calibration option
+- [~] sensor calibration option — web wizard for pH, EC, DO, ORP, soil (in development, see [calibration_ADS1115.md](calibration_ADS1115.md))
 
 ### Hardware
 
 - [ ] LiPo Charger circuit on board
 - [ ] Grove I2C Connector
+- [ ] USB-C Connector
 
 for technical questions you can write me an email: artdanion at gmail.com
 
@@ -148,9 +212,92 @@ for technical questions you can write me an email: artdanion at gmail.com
 - TDS
 - VEML7700
 
+## Sensor Calibration
+
+Selected sensors support in-firmware calibration via the web interface. Navigate to `http://<board-ip>/calibrate` to open the calibration wizard.
+
+| Sensor group | Method | Status |
+|---|---|---|
+| pH, EC, DO, ORP | ADS1115 module required — web wizard with live readings | In development |
+| Soil moisture (CAP_SOIL) | 2-point dry/wet via analog pin | Available |
+
+Calibration values are saved to `/board_cal.json` on SPIFFS and loaded on every boot. Factory defaults are used if no calibration has been performed — behaviour is identical to earlier firmware versions.
+
+→ Full documentation, formulas, buffer solutions and troubleshooting: **[calibration_ADS1115.md](calibration_ADS1115.md)**
+
 ## WiFi Data Upload
 
-When the board uploads sensor data over WiFi, the JSON payload includes a `time` field with the current local timestamp (e.g. `"time": "2025-06-01 14:32:05 CEST"`). This requires a valid time source (NTP, RTC, or HTTP header sync).
+The board sends a single HTTP POST request to the TAC backend after every measurement cycle.
+
+### Endpoint
+
+```
+POST https://kits.teleagriculture.org/api/kits/{boardID}/measurements
+Content-Type: application/json
+Authorization: Bearer {API_KEY}
+```
+
+`boardID` and `API_KEY` are set in `/include/board_credentials.h`.
+
+### Payload structure
+
+The payload is a **flat JSON object** — one key per measurement, plus an optional timestamp.
+
+```json
+{
+  "temp":        23.45,
+  "press":       1013.25,
+  "alt":         210.3,
+  "hum":         58.1,
+  "TDS":         312.0,
+  "mois":        67.0,
+  "Battery":     3.87,
+  "time":        "2025-06-01 14:32:05 CEST"
+}
+```
+
+- All values are **floats, rounded to 2 decimal places**.
+- **NaN values are silently dropped** — if a sensor fails, its key is absent.
+- `"time"` requires a valid time source (NTP, RTC, or HTTP header sync). Absent if time is unavailable.
+- If the same measurement type appears more than once (e.g. two temperature sensors), subsequent keys are suffixed: `temp`, `temp1`, `temp2`, …
+
+### Complete field reference
+
+| Key | Unit | Source sensor(s) |
+|-----|------|-----------------|
+| `temp` | °C | BMP280, BME280, BME680, DS18B20, DHT22, DHT11, SHT21, LM35 |
+| `hum` | % | BME280, BME680, DHT22, DHT11, SHT21 |
+| `press` | hPa | BMP280, BME280, BME680 |
+| `alt` | m | BMP280, BME280, BME680 |
+| `resist` | kΩ | BME680 (gas resistance) |
+| `lux` | lx | VEML7700, BH1750, BH1745 |
+| `ambient` | lx | VEML7700 (white channel) |
+| `UV Int.` | mW/cm² | ML8511 UV sensor |
+| `UV Index` | mW/cm² | LTR390 |
+| `Light int.` | lx | DFRobot ambient light |
+| `red` / `green` / `blue` / `clear` | raw counts | BH1745 RGBC |
+| `height` | mm | Water level sensor |
+| `TDS` | ppm | TDS sensor |
+| `mois` | % or raw | CAP_SOIL (%), CAP_GROOVE (raw ADC) |
+| `Battery` | V | Battery voltage (BATSENS pin) |
+| `ORP` | mV | ADS1115 ch0 — ORP probe |
+| `DO` | mg/L | ADS1115 ch1 — dissolved oxygen |
+| `EC` | mS/cm | ADS1115 ch2 — conductivity |
+| `PH` | pH | ADS1115 ch3 — pH probe |
+| `CO` | ppm | MultiGas / MultiGas V1 |
+| `NO2` | ppm | MultiGas / MultiGas V1 |
+| `NH3` | ppm | MultiGas V1 |
+| `CH4` | ppm | MultiGas V1 |
+| `H2` | ppm | MultiGas V1 |
+| `C3H8` | ppm | MultiGas V1 (propane) |
+| `C4H10` | ppm | MultiGas V1 (butane) |
+| `C2H5OH` | ppm | MultiGas V1 (ethanol) |
+| `Sound lvl` | dBA | DFRobot sound level meter |
+| `Pressure lvl` | mm | Throw-in liquid level transmitter |
+| `flame` | V | DFRobot flame sensor |
+| `wind_dir` | deg | SparkFun wind vane (0–360°, 16 steps) |
+| `wind_spd` | km/h | SparkFun anemometer |
+| `time` | string | Timestamp — `"YYYY-MM-DD HH:MM:SS TZ"` |
 
 ## LIVE Mode (MQTT / OSC)
 

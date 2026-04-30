@@ -68,6 +68,7 @@
 #include <time_functions.h>
 #include <ui_functions.h>
 #include <web_functions.h>
+#include <calibrate_functions.h>
 #include <lora_functions.h>
 #define LOG_TAG "MAIN"     // must be before debug_functions.h include
 #include <debug_functions.h>
@@ -145,6 +146,7 @@ void setup()
    load_Sensors();    // Prototypes get loaded
    load_Connectors(); // Connectors lookup table
    load_Config();     // load config Data
+   load_Cal();        // load calibration data
 
    initDisplayIfNeeded();
    handleWakeupDisplay();
@@ -635,10 +637,12 @@ void setupWebpageIfNeeded()
       return;
 
    WiFi.mode(WIFI_AP_STA);
-   WiFi.softAP("TeleAgriCulture DB", "enter123");
+   WiFi.softAP(boardSSID.c_str(), "enter123");
 
    IPAddress IP = WiFi.softAPIP();
-   Serial.print("AP IP address: ");
+   Serial.print("Dashboard AP: ");
+   Serial.print(boardSSID);
+   Serial.print("  IP: ");
    Serial.println(IP);
 
    if (MDNS.begin("esp32"))
@@ -650,6 +654,9 @@ void setupWebpageIfNeeded()
    server.on("/test.svg", drawGraph);
    server.on("/inline", []()
              { server.send(200, "text/plain", "this works as well"); });
+   server.on("/calibrate", handleCalibrate);
+   server.on("/calread",   handleCalRead);
+   server.on("/calsave",   HTTP_POST, handleCalSave);
    server.onNotFound(handleNotFound);
    server.begin();
 

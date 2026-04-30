@@ -9,3 +9,5 @@ void load_Connectors(void);
 void save_Connectors(void);
 void load_Config(void);
 void save_Config(void);
+void save_Cal(void);
+void load_Cal(void);

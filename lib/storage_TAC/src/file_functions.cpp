@@ -3,8 +3,19 @@
 #include <init_Board.h>
 #include <debug_functions.h>
 #include <time_functions.h>
+#include <cal_values.h>
 
 #include <ArduinoJson.h>
+
+// Calibration globals — factory defaults, overwritten by load_Cal()
+float cal_pH_neutral  = 1455.0f;
+float cal_pH_acid     = 2032.44f;
+float cal_EC_kvalue   = 1.0f;
+float cal_DO_sat_mV   = 1600.0f;
+float cal_DO_sat_T    = 25.0f;
+float cal_ORP_offset  = -1989.0f;
+int   cal_soil_air    = 2963;
+int   cal_soil_water  = 1044;
 
 // file and storage functions
 
@@ -540,4 +551,48 @@ void load_Config(void)
       if (p >= 1 && p <= 65535)
          osc_port = static_cast<uint16_t>(p);
    }
+}
+
+void save_Cal(void)
+{
+   DynamicJsonDocument doc(512);
+   doc["pH_neutral"]  = cal_pH_neutral;
+   doc["pH_acid"]     = cal_pH_acid;
+   doc["EC_kvalue"]   = cal_EC_kvalue;
+   doc["DO_sat_mV"]   = cal_DO_sat_mV;
+   doc["DO_sat_T"]    = cal_DO_sat_T;
+   doc["ORP_offset"]  = cal_ORP_offset;
+   doc["soil_air"]    = cal_soil_air;
+   doc["soil_water"]  = cal_soil_water;
+
+   File f = SPIFFS.open("/board_cal.json", "w");
+   if (!f) { Serial.println("failed to open /board_cal.json for write"); return; }
+   serializeJson(doc, f);
+   f.close();
+   Serial.println("Saved Cal File");
+}
+
+void load_Cal(void)
+{
+   if (!SPIFFS.begin()) return;
+   if (!SPIFFS.exists("/board_cal.json")) return;
+
+   File f = SPIFFS.open("/board_cal.json", "r");
+   if (!f) return;
+
+   DynamicJsonDocument doc(512);
+   DeserializationError err = deserializeJson(doc, f);
+   f.close();
+   if (err) { Serial.printf("board_cal.json parse error: %s\n", err.c_str()); return; }
+
+   if (doc.containsKey("pH_neutral"))  cal_pH_neutral  = doc["pH_neutral"].as<float>();
+   if (doc.containsKey("pH_acid"))     cal_pH_acid     = doc["pH_acid"].as<float>();
+   if (doc.containsKey("EC_kvalue"))   cal_EC_kvalue   = doc["EC_kvalue"].as<float>();
+   if (doc.containsKey("DO_sat_mV"))   cal_DO_sat_mV   = doc["DO_sat_mV"].as<float>();
+   if (doc.containsKey("DO_sat_T"))    cal_DO_sat_T    = doc["DO_sat_T"].as<float>();
+   if (doc.containsKey("ORP_offset"))  cal_ORP_offset  = doc["ORP_offset"].as<float>();
+   if (doc.containsKey("soil_air"))    cal_soil_air    = doc["soil_air"].as<int>();
+   if (doc.containsKey("soil_water"))  cal_soil_water  = doc["soil_water"].as<int>();
+
+   Serial.println("Loaded Cal File");
 }
