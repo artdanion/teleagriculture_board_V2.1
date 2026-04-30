@@ -26,6 +26,9 @@
 
 #pragma once
 
+#undef LOG_TAG
+#define LOG_TAG "SENSOR"
+
 #include <Arduino.h>
 #include <esp_adc_cal.h>
 #include <soc/adc_channel.h>
@@ -148,15 +151,24 @@ float acidVoltage = 2032.44;   // buffer solution 4.0 at 22C
 float neutralVoltage = 1455.0; // buffer solution 7.0 at 22C
 // calibration values for: Gravity: Analog pH Sensor / Meter Kit V2
 
+// Returns true if any active measurement slot (0..returnCount-1) holds NaN
+static bool hasNaN(const Sensor &s) {
+    int n = (s.returnCount > 0) ? s.returnCount : 1;
+    for (int i = 0; i < n; i++)
+        if (isnan((float)s.measurements[i].value)) return true;
+    return false;
+}
+
 void sensorRead()
 {
+    LOGI("=== Sensor Read start ===");
     digitalWrite(LED, HIGH);
     pinMode(SW_3V3, OUTPUT);
     pinMode(SW_5V, OUTPUT);
 
     digitalWrite(SW_3V3, HIGH);
     digitalWrite(SW_5V, HIGH);
-
+   
     sensorVector.clear();
 
     Wire.setPins(I2C_SDA, I2C_SCL);
@@ -185,13 +197,14 @@ void sensorRead()
     {
         Sensor newSensor = allSensors[BATTERY];
         newSensor.measurements->value = getBatteryVoltage();
+        LOGD("Battery: %.2f V", (float)newSensor.measurements->value);
         sensorVector.push_back(newSensor);
 
         // Serial.println("\nSensorRead.....");
         DEBUG_PRINT("Sensor Read ....");
-        readOneWire_Connectors();
-        readADC_Connectors();
-        readI2C_Connectors();
+        readI2C_Connectors();      // BMP/BME temperature feeds compensation first
+        readOneWire_Connectors();  // DS18B20 overrides temperature (better for water probes)
+        readADC_Connectors();      // TDS/EC/DO now uses best available temperature
         readI2C_5V_Connector();
         readEXTRA_Connectors();
     }
@@ -201,6 +214,7 @@ void sensorRead()
 
     updateDataNames(sensorVector); // adding # to sensor data_name (e.g. temp, temp1, temp2 ....)
     newSensorDataAvailable=true; // sets Data flag
+    LOGI("=== Sensor Read done: %d sensor(s) ===", (int)sensorVector.size());
 }
 
 void readI2C_Connectors()
@@ -225,22 +239,25 @@ void readI2C_Connectors()
             String addrStr = allSensors[BMP_280].possible_i2c_add[I2C_con_table[j].addrIndex];
             uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
 
+            LOGI("BMP280 @ 0x%02X - connecting...", addr);
+
             Adafruit_BMP280 bmp;
-            float pressure, altitude;
 
             if (!bmp.begin(addr))
             {
-                Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
-                                 "try a different address!"));
+                // BMP280 uses 0x76 (SDO=GND) or 0x77 (SDO=VCC)
+                LOGE("BMP280 not found @ 0x%02X! Try 0x%02X. Check wiring & SDO pin.", addr, addr ^ 0x01);
+                break; // was missing — caused NAN readings when sensor absent
             }
+
+            LOGD("BMP280 found, chipID=0x%02X", bmp.sensorID());
             delay(100);
 
-            /* Default settings from datasheet. */
-            bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
-                            Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                            Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                            Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                            Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+            bmp.setSampling(Adafruit_BMP280::MODE_FORCED,
+                            Adafruit_BMP280::SAMPLING_X2,
+                            Adafruit_BMP280::SAMPLING_X16,
+                            Adafruit_BMP280::FILTER_X16,
+                            Adafruit_BMP280::STANDBY_MS_500);
 
             Sensor newSensor = allSensors[BMP_280];
 
@@ -249,10 +266,14 @@ void readI2C_Connectors()
                 newSensor.measurements[0].value = bmp.readTemperature();
                 newSensor.measurements[1].value = (double)(bmp.readPressure() / 100.00F);
                 newSensor.measurements[2].value = bmp.readAltitude(SEALEVELPRESSURE_HPA);
+                LOGI("BMP280: temp=%.2f C  press=%.2f hPa  alt=%.1f m",
+                     (float)newSensor.measurements[0].value,
+                     (float)newSensor.measurements[1].value,
+                     (float)newSensor.measurements[2].value);
             }
             else
             {
-                Serial.println("Forced measurement failed!");
+                LOGW("BMP280: forced measurement failed!");
             }
 
             sensorVector.push_back(newSensor);
@@ -267,24 +288,28 @@ void readI2C_Connectors()
             String addrStr = allSensors[BME_280].possible_i2c_add[I2C_con_table[j].addrIndex];
             uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
 
+            LOGI("BME280 @ 0x%02X - connecting...", addr);
             status = bme.begin(addr, &Wire);
             if (!status)
             {
-                Serial.println("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
-                Serial.print("SensorID was: 0x");
-                Serial.println(bme.sensorID(), 16);
-                Serial.print("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
-                Serial.print("        ID of 0x56-0x58 represents a BMP 280,\n");
-                Serial.print("        ID of 0x60 represents a BME 280.\n");
-                Serial.println("        ID of 0x61 represents a BME 680.\n");
+                // ID 0x56-0x58 = BMP280 (no humidity!), 0x60 = BME280, 0x61 = BME680
+                LOGE("BME280 not found @ 0x%02X (sensorID=0x%02X) - check wiring/address", addr, bme.sensorID());
                 break;
             }
+
+            LOGD("BME280 found, sensorID=0x%02X", bme.sensorID());
 
             Sensor newSensor = allSensors[BME_280];
             newSensor.measurements[0].value = bme.readHumidity();
             newSensor.measurements[1].value = bme.readTemperature();
             newSensor.measurements[2].value = (double)(bme.readPressure() / 100.0F);
             newSensor.measurements[3].value = bme.readAltitude(SEALEVELPRESSURE_HPA);
+
+            LOGI("BME280: hum=%.1f%%  temp=%.2f C  press=%.2f hPa  alt=%.1f m",
+                 (float)newSensor.measurements[0].value,
+                 (float)newSensor.measurements[1].value,
+                 (float)newSensor.measurements[2].value,
+                 (float)newSensor.measurements[3].value);
 
             sensorVector.push_back(newSensor);
         }
@@ -1087,6 +1112,8 @@ void readOneWire_Connectors()
 
         case DHT_22:
         {
+             delay(2000); // DHT11/22 need ~1s stabilization after 5V power-on (SW_5V cycles every read)
+
             int dht22SensorPin;
             if (OWi == 0)
             {
@@ -1104,13 +1131,19 @@ void readOneWire_Connectors()
             }
 
             DHT dht(dht22SensorPin, DHTTYPE1);
-            dht.begin(dht22SensorPin);
-            delay(200);
+            dht.begin(); // default 55us pullup timing
+            delay(500);
 
             Sensor newSensor = allSensors[DHT_22];
 
             newSensor.measurements[0].value = dht.readTemperature();
             newSensor.measurements[1].value = dht.readHumidity();
+
+            if (isnan((float)newSensor.measurements[0].value) || isnan((float)newSensor.measurements[1].value))
+                LOGW("DHT22 pin=%d: NAN reading - check wiring/power", dht22SensorPin);
+            else
+                LOGI("DHT22 pin=%d: temp=%.1f C  hum=%.1f%%", dht22SensorPin,
+                     (float)newSensor.measurements[0].value, (float)newSensor.measurements[1].value);
 
             sensorVector.push_back(newSensor);
         }
@@ -1118,6 +1151,8 @@ void readOneWire_Connectors()
 
         case DHT_11:
         {
+             delay(2000); // DHT11/22 need ~1s stabilization after 5V power-on (SW_5V cycles every read)
+
             int dht11SensorPin;
             if (OWi == 0)
             {
@@ -1135,13 +1170,19 @@ void readOneWire_Connectors()
             }
 
             DHT dht2(dht11SensorPin, DHTTYPE2);
-            dht2.begin(dht11SensorPin);
-            delay(200);
+            dht2.begin(); // default 55us pullup timing
+            delay(500);
 
             Sensor newSensor = allSensors[DHT_11];
 
             newSensor.measurements[0].value = dht2.readTemperature();
             newSensor.measurements[1].value = dht2.readHumidity();
+
+            if (isnan((float)newSensor.measurements[0].value) || isnan((float)newSensor.measurements[1].value))
+                LOGW("DHT11 pin=%d: NAN reading - check wiring/power", dht11SensorPin);
+            else
+                LOGI("DHT11 pin=%d: temp=%.1f C  hum=%.1f%%", dht11SensorPin,
+                     (float)newSensor.measurements[0].value, (float)newSensor.measurements[1].value);
 
             sensorVector.push_back(newSensor);
         }
@@ -1205,8 +1246,7 @@ void readOneWire_Connectors()
                     newSensor.measurements[0].value = static_cast<double>(temp) / 1000.0;
                     sensorVector.push_back(newSensor);
                     temperature = float(newSensor.measurements[0].value);
-                    Serial.print("\nTemp used: ");
-                    Serial.print(temperature);
+                    LOGI("DS18B20 pin=%d: temp=%.3f C (used for TDS compensation)", ds18b20SensorPin, temperature);
                 }
             }
         }
@@ -1562,3 +1602,6 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+#undef LOG_TAG
+#define LOG_TAG "MAIN"

@@ -25,7 +25,7 @@
  *
 
 
-/*********************************** VERSION 1.80 ****************************
+/*********************************** VERSION 1.90 ****************************
 /*
  *
  * board credentials are in /include/board_credentials.h  (BoardID, API_KEY and LORA credentials)
@@ -34,7 +34,7 @@
  * ------> Config Portal opens after double reset or holding BooT button for > 5sec
  *____________________________________________________________
  *
- * Config Portal Access Point:   SSID: TAC-XXXXXX (unique per board, last 6 hex chars of MAC)
+ * Config Portal Access Point:   SSID: TAC-XXXXXX (unique per board, last 6 hex chars of MAC ->since v.1.85)
  *                               pasword: enter123
  *____________________________________________________________
  *
@@ -57,6 +57,7 @@
 /*/
 
 #include <Arduino.h>
+#include <esp_log.h>
 
 #include <utilities/tac_logo.h>
 #include <utilities/customTitle_picture.h>
@@ -68,6 +69,7 @@
 #include <ui_functions.h>
 #include <web_functions.h>
 #include <lora_functions.h>
+#define LOG_TAG "MAIN"     // must be before debug_functions.h include
 #include <debug_functions.h>
 #include <sensor_Read.hpp> // Sensor read handling
 #include <WiFiManagerTz.h> // Setup Page html rendering and Web UI input handling ( save_Config() and save_Connectors() gets called in /lib/WiFiManagerTz.h handleValues() )
@@ -75,9 +77,6 @@
 #include "mqtt_support.h"
 #include "osc_support.h"
 #include "esp_task_wdt.h"
-
-#define TAC_LOG_LEVEL 3
-#define LOG_TAG "MAIN"
 
 #define DEBUG_PRINT false // full debug print
 #define DOUBLERESETDETECTOR_DEBUG true
@@ -131,6 +130,8 @@ String generateUniqueSSID() {
 
 void setup()
 {
+   esp_log_level_set("ledc", ESP_LOG_WARN); // suppress LEDC driver spam from analogWrite(GPIO48)
+
 #if DEBUG_PRINT
    delay(2000);
 #endif
