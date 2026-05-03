@@ -7,7 +7,7 @@
     "measurements": [
       {
         "value": 20.3,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -123,7 +123,7 @@
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -143,7 +143,7 @@
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       }
@@ -243,9 +243,9 @@
     "measurements": [
       {
         "value": 20,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
-        "data_name": "Temp"
+        "data_name": "temp"
       }
     ],
     "addr_num": 1,
@@ -309,7 +309,7 @@
       },
       {
         "value": 20.3,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -433,7 +433,7 @@
     "measurements": [
       {
         "value": 0.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       }
@@ -461,7 +461,7 @@
     "measurements": [
       {
         "value": 20.2,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -481,9 +481,9 @@
     "measurements": [
       {
         "value": 20,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
-        "data_name": "Temp"
+        "data_name": "temp"
       },
       {
         "value": 40.2,
@@ -543,7 +543,7 @@
     "measurements": [
       {
         "value": 20.5,
-        "valueOrder": "TEMP",
+        "valueOrder": "TEMPERATURE",
         "unit": "°C",
         "data_name": "temp"
       },
@@ -558,5 +558,108 @@
     "possible_i2c_add": {
       "default": "0x40"
     }
+  },
+  {
+    "sensor-id": 27,
+    "name": "LTR_390",
+    "con_typ": "I2C",
+    "returnCount": 2,
+    "measurements": [
+      {
+        "value": 100.5,
+        "valueOrder": "LUX",
+        "unit": "lx",
+        "data_name": "lux"
+      },
+      {
+        "value": 5.5,
+        "valueOrder": "UV_I",
+        "unit": "mW/cm^2",
+        "data_name": "UV Index"
+      }
+    ],
+    "addr_num": 1,
+    "possible_i2c_add": {
+      "default": "0x53"
+    }
+  },
+  {
+    "sensor-id": 28,
+    "name": "BH_1745",
+    "con_typ": "I2C",
+    "returnCount": 4,
+    "measurements": [
+      {
+        "value": 1000,
+        "valueOrder": "RED_v",
+        "unit": "raw",
+        "data_name": "red"
+      },
+      {
+        "value": 1000,
+        "valueOrder": "GREEN_v",
+        "unit": "raw",
+        "data_name": "green"
+      },
+      {
+        "value": 1000,
+        "valueOrder": "BLUE_v",
+        "unit": "raw",
+        "data_name": "blue"
+      },
+      {
+        "value": 3000,
+        "valueOrder": "CLEAR_v",
+        "unit": "raw",
+        "data_name": "clear"
+      }
+    ],
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x38",
+      "alt_1": "0x39"
+    }
+  },
+  {
+    "sensor-id": 29,
+    "name": "SPF_WINDVANE",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "DIRECTION",
+        "unit": "deg",
+        "data_name": "wind_dir"
+      }
+    ]
+  },
+  {
+    "sensor-id": 30,
+    "name": "SPF_ANEMOMETER",
+    "con_typ": "ONE_WIRE",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "SPEED",
+        "unit": "km/h",
+        "data_name": "wind_spd"
+      }
+    ]
+  },
+  {
+    "sensor-id": 31,
+    "name": "Heart Rate",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 70,
+        "valueOrder": "BPM",
+        "unit": "bpm",
+        "data_name": "BPM"
+      }
+    ]
   }
 ]

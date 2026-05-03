@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 // Sensor settings
-#define SENSORS_NUM 30
+#define SENSORS_NUM 31
 #define MEASURMENT_NUM 8
 #define MAX_I2C_ADDRESSES 4
 #define JSON_BUFFER 15000
@@ -19,7 +19,7 @@ enum ValueOrder {
   NH3v, C4H10v, C3H8v, CH4v, C2H5OHv, ALTITUDE,
   MV, MGL, MSCM, PH, DBA, DEPTH, UV_I, RGB, ANGLE, KOHM,
   RED_v, GREEN_v, BLUE_v, CLEAR_v,
-  DIRECTION, SPEED
+  DIRECTION, SPEED, BPM
 };
 
 enum SensorsImplemented {
@@ -28,7 +28,7 @@ enum SensorsImplemented {
   RTCDS3231, BATTERY, WS2812, SERVO, BME_280, ADS1115,
   SOUND, PRE_LVL, UV_DFR, LIGHT_DFR, DFR_LM35,
   DFR_FLAME, DHT_11, BMP_680, BH_1750, SHT_21, LTR_390,
-  BH_1745, SPF_WINDVANE, SPF_ANEMOMETER
+  BH_1745, SPF_WINDVANE, SPF_ANEMOMETER, HEART_RATE
 };
 
 class Measurement {

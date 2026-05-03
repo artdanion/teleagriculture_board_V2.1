@@ -167,6 +167,7 @@ there is also a section about integrated sensors.
 - **DHT11** — digital temperature and humidity sensor
 - **DHT22** — digital temperature and humidity sensor (higher accuracy than DHT11)
 - **DS18B20** — 1-Wire waterproof temperature sensor, supports multiple sensors on one bus
+- **HEART_RATE** — Gravity Heart Rate Monitor Sensor (SEN0203 based on AD8232), outputs BPM (analog)
 - **LEVEL** — analog water level sensor
 - **LTR_390** — UV index and ambient light sensor (I2C 0x53)
 - **MultiGasV1** — Grove Multichannel Gas Sensor V1 (I2C 0x04) — H₂, CO, NO₂, NH₃, C₄H₁₀, C₃H₈, CH₄, C₂H₅OH

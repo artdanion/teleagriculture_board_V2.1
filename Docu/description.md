@@ -13,6 +13,7 @@
 - DHT11
 - DHT22
 - DS18B20
+- HEART_RATE
 - LTR_390
 - MultiGasV1
 - MultiGasV2

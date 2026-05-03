@@ -1124,6 +1124,91 @@ void readADC_Connectors()
         }
         break;
 
+        case HEART_RATE:
+        {
+            int heartRatePin;
+            if (i == 0)
+            {
+                heartRatePin = ANALOG1;
+            }
+            if (i == 1)
+            {
+                heartRatePin = ANALOG2;
+            }
+            if (i == 2)
+            {
+                heartRatePin = ANALOG3;
+            }
+
+            pinMode(heartRatePin, INPUT);
+
+            // Improved heartbeat detection based on AD8232 signal processing
+            // Similar to HeartSpeed library but without AVR-specific timers
+
+            const int SAMPLE_SIZE = 100; // Buffer size for samples
+            static int samples[SAMPLE_SIZE] = {0};
+            static int sampleIndex = 0;
+            static unsigned long lastSampleTime = 0;
+            static unsigned long lastBeatTime = 0;
+            static int beatCount = 0;
+            static float bpm = 70.0; // Default BPM
+            static int threshold = 512; // Adaptive threshold
+            static bool wasAboveThreshold = false;
+
+            unsigned long now = millis();
+
+            // Sample at ~100Hz (every 10ms)
+            if (now - lastSampleTime >= 10) {
+                int rawValue = analogRead(heartRatePin);
+
+                // Simple moving average filter
+                samples[sampleIndex] = rawValue;
+                sampleIndex = (sampleIndex + 1) % SAMPLE_SIZE;
+
+                // Calculate average of last few samples
+                int sum = 0;
+                for (int j = 0; j < SAMPLE_SIZE; j++) {
+                    sum += samples[j];
+                }
+                int filteredValue = sum / SAMPLE_SIZE;
+
+                // Adaptive threshold based on signal
+                int minVal = 4095, maxVal = 0;
+                for (int j = 0; j < SAMPLE_SIZE; j++) {
+                    if (samples[j] < minVal) minVal = samples[j];
+                    if (samples[j] > maxVal) maxVal = samples[j];
+                }
+                threshold = (minVal + maxVal) / 2 + (maxVal - minVal) / 4; // 75% of range
+
+                // Peak detection
+                bool isAboveThreshold = filteredValue > threshold;
+                if (isAboveThreshold && !wasAboveThreshold) {
+                    // Rising edge - potential beat
+                    unsigned long beatInterval = now - lastBeatTime;
+                    if (beatInterval > 300 && beatInterval < 2000) { // Reasonable range
+                        beatCount++;
+                        if (beatCount >= 3) { // Average over last 3 beats
+                            bpm = 60000.0 / beatInterval;
+                            beatCount = 1; // Reset but keep last
+                        }
+                        lastBeatTime = now;
+                    }
+                }
+                wasAboveThreshold = isAboveThreshold;
+
+                lastSampleTime = now;
+            }
+
+            Sensor newSensor = allSensors[HEART_RATE];
+            newSensor.measurements[0].value = bpm;
+
+            if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
+        }
+        break;
+
         default:
             break;
         }

@@ -1,237 +1,200 @@
-var bytesToInt = function (bytes) {
-  var i = 0;
-  for (var x = 0; x < bytes.length; x++) {
-    i |= +(bytes[x] << (x * 8));
-  }
-  return i;
-};
-
-var unixtime = function (bytes) {
-  if (bytes.length !== unixtime.BYTES) {
-    throw new Error('Unix time must have exactly 4 bytes');
-  }
-  return bytesToInt(bytes);
-};
-unixtime.BYTES = 4;
-
-var uint8 = function (bytes) {
-  if (bytes.length !== uint8.BYTES) {
-    throw new Error('uint8 must have exactly 1 byte');
-  }
-  return bytesToInt(bytes);
-};
-uint8.BYTES = 1;
-
-var uint16 = function (bytes) {
-  if (bytes.length !== uint16.BYTES) {
-    throw new Error('uint16 must have exactly 2 bytes');
-  }
-  return bytesToInt(bytes);
-};
-uint16.BYTES = 2;
-
-var uint32 = function (bytes) {
-  if (bytes.length !== uint32.BYTES) {
-    throw new Error('uint32 must have exactly 4 bytes');
-  }
-  return bytesToInt(bytes);
-};
-uint32.BYTES = 4;
-
-var latLng = function (bytes) {
-  if (bytes.length !== latLng.BYTES) {
-    throw new Error('Lat/Long must have exactly 8 bytes');
-  }
-
-  var lat = bytesToInt(bytes.slice(0, latLng.BYTES / 2));
-  var lng = bytesToInt(bytes.slice(latLng.BYTES / 2, latLng.BYTES));
-
-  return [lat / 1e6, lng / 1e6];
-};
-latLng.BYTES = 8;
-
-var temperature = function (bytes) {
-  if (bytes.length !== temperature.BYTES) {
-    throw new Error('Temperature must have exactly 2 bytes');
-  }
-  var isNegative = bytes[0] & 0x80;
-  var b = ('00000000' + Number(bytes[0]).toString(2)).slice(-8)
-    + ('00000000' + Number(bytes[1]).toString(2)).slice(-8);
-  if (isNegative) {
-    var arr = b.split('').map(function (x) { return !Number(x); });
-    for (var i = arr.length - 1; i > 0; i--) {
-      arr[i] = !arr[i];
-      if (arr[i]) {
-        break;
-      }
-    }
-    b = arr.map(Number).join('');
-  }
-  var t = parseInt(b, 2);
-  if (isNegative) {
-    t = -t;
-  }
-  return t / 1e2;
-};
-temperature.BYTES = 2;
-
-var humidity = function (bytes) {
-  if (bytes.length !== humidity.BYTES) {
-    throw new Error('Humidity must have exactly 2 bytes');
-  }
-
-  var h = bytesToInt(bytes);
-  return h / 1e2;
-};
-humidity.BYTES = 2;
-
-// Based on https://stackoverflow.com/a/37471538 by Ilya Bursov
-// quoted by Arjan here https://www.thethingsnetwork.org/forum/t/decode-float-sent-by-lopy-as-node/8757
-function rawfloat(bytes) {
-  if (bytes.length !== rawfloat.BYTES) {
-    throw new Error('Float must have exactly 4 bytes');
-  }
-  // JavaScript bitwise operators yield a 32 bits integer, not a float.
-  // Assume LSB (least significant byte first).
-  var bits = bytes[3] << 24 | bytes[2] << 16 | bytes[1] << 8 | bytes[0];
-  var sign = (bits >>> 31 === 0) ? 1.0 : -1.0;
-  var e = bits >>> 23 & 0xff;
-  var m = (e === 0) ? (bits & 0x7fffff) << 1 : (bits & 0x7fffff) | 0x800000;
-  var f = sign * m * Math.pow(2, e - 150);
-  return f;
-}
-rawfloat.BYTES = 4;
-
-var bitmap = function (byte) {
-  if (byte.length !== bitmap.BYTES) {
-    throw new Error('Bitmap must have exactly 1 byte');
-  }
-  var i = bytesToInt(byte);
-  var bm = ('00000000' + Number(i).toString(2)).substr(-8).split('').map(Number).map(Boolean);
-  return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    .reduce(function (obj, pos, index) {
-      obj[pos] = bm[index];
-      return obj;
-    }, {});
-};
-bitmap.BYTES = 1;
-
-const ValueOrder = {
-  NOT: -1,
-  VOLT: 0,
-  TEMP: 1,
-  HUMIDITY: 2,
-  PRESSURE: 3,
-  DISTANCE: 4,
-  TDSv: 5,
-  MOIS: 6,
-  LUX: 7,
-  AMBIENT: 8,
-  H2v: 9,
-  COv: 10,
-  CO2v: 11,
-  NO2v: 12,
-  NH3v: 13,
-  C4H10v: 14,
-  C3H8v: 15,
-  CH4v: 16,
-  C2H5OHv: 17,
-  ALTITUDE: 18,
-  MV: 19,
-  MGL: 20,
-  MSCM: 21,
-  PH: 22,
-  DBA: 23,
-  DEPTH: 24,
-  UV_I: 25,
-  RGB: 26,
-  ANGLE: 27,
-  KOHM: 28,
-  RED_v: 29,
-  GREEN_v: 30,
-  BLUE_v: 31,
-  CLEAR_v: 32,
-  DIRECTION: 33,
-  SPEED: 34
-};
-
-
-decoders = {
-  temp: temperature,
-  humidity: humidity,
-  rawfloat: rawfloat,
-  uint16: uint16
-};
-
-const valueOrders = [
-  { data_name: "Battery",   encoding: "temp"     }, // 0  VOLT
-  { data_name: "temp",      encoding: "temp"     }, // 1  TEMP
-  { data_name: "hum",       encoding: "humidity" }, // 2  HUMIDITY
-  { data_name: "press",     encoding: "rawfloat" }, // 3  PRESSURE
-  { data_name: "height",    encoding: "temp"     }, // 4  DISTANCE
-  { data_name: "TDS",       encoding: "uint16"   }, // 5  TDSv
-  { data_name: "MOIS",      encoding: "uint16"   }, // 6  MOIS
-  { data_name: "LUX",       encoding: "uint16"   }, // 7  LUX
-  { data_name: "Ambient",   encoding: "uint16"   }, // 8  AMBIENT
-  { data_name: "H2",        encoding: "uint16"   }, // 9  H2v
-  { data_name: "CO",        encoding: "uint16"   }, // 10 COv
-  { data_name: "CO2",       encoding: "uint16"   }, // 11 CO2v
-  { data_name: "NO2",       encoding: "uint16"   }, // 12 NO2v
-  { data_name: "NH3",       encoding: "uint16"   }, // 13 NH3v
-  { data_name: "C4H10",     encoding: "uint16"   }, // 14 C4H10v
-  { data_name: "C3H8",      encoding: "uint16"   }, // 15 C3H8v
-  { data_name: "CH4",       encoding: "uint16"   }, // 16 CH4v
-  { data_name: "C2H5OH",    encoding: "uint16"   }, // 17 C2H5OHv
-  { data_name: "alt",       encoding: "uint16"   }, // 18 ALTITUDE
-  { data_name: "OPR",       encoding: "rawfloat" }, // 19 MV
-  { data_name: "DO",        encoding: "temp"     }, // 20 MGL
-  { data_name: "EC",        encoding: "temp"     }, // 21 MSCM
-  { data_name: "PH",        encoding: "temp"     }, // 22 PH
-  { data_name: "SOUND",     encoding: "temp"     }, // 23 DBA
-  { data_name: "DEPTH",     encoding: "rawfloat" }, // 24 DEPTH
-  { data_name: "UV_I",      encoding: "temp"     }, // 25 UV_I
-  { data_name: "RGB",       encoding: "uint16"   }, // 26 RGB
-  { data_name: "ANGLE",     encoding: "temp"     }, // 27 ANGLE
-  { data_name: "KOHM",      encoding: "rawfloat" }, // 28 KOHM
-  { data_name: "red",       encoding: "uint16"   }, // 29 RED_v
-  { data_name: "green",     encoding: "uint16"   }, // 30 GREEN_v
-  { data_name: "blue",      encoding: "uint16"   }, // 31 BLUE_v
-  { data_name: "clear",     encoding: "uint16"   }, // 32 CLEAR_v
-  { data_name: "wind_dir",  encoding: "uint16"   }, // 33 DIRECTION (degrees 0–360)
-  { data_name: "wind_spd",  encoding: "rawfloat" }  // 34 SPEED (km/h)
-];
-
 function decodeUplink(input) {
-  let i = 0;
-  let b = input.bytes;
+  let b = input.bytes || [];
   let output = {};
   let count = {};
+  let warnings = [];
+
+  function safeSlice(arr, n) {
+    if (arr.length < n) {
+      warnings.push("Payload too short");
+      return null;
+    }
+    return [arr.slice(0, n), arr.slice(n)];
+  }
+
+  function bytesToInt(bytes) {
+    var i = 0;
+    for (var x = 0; x < bytes.length; x++) {
+      i |= (bytes[x] << (x * 8));
+    }
+    return i;
+  }
+
+  function temperature(bytes) {
+    if (!bytes || bytes.length !== 2) return null;
+
+    var isNegative = bytes[0] & 0x80;
+
+    var b =
+      ('00000000' + Number(bytes[0]).toString(2)).slice(-8) +
+      ('00000000' + Number(bytes[1]).toString(2)).slice(-8);
+
+    if (isNegative) {
+      var arr = b.split('').map(function (x) { return !Number(x); });
+      for (var i = arr.length - 1; i > 0; i--) {
+        arr[i] = !arr[i];
+        if (arr[i]) break;
+      }
+      b = arr.map(Number).join('');
+    }
+
+    var t = parseInt(b, 2);
+    if (isNegative) t = -t;
+
+    return t / 1e2;
+  }
+
+  function humidity(bytes) {
+    if (!bytes || bytes.length !== 2) return null;
+    return bytesToInt(bytes) / 1e2;
+  }
+
+  function uint16(bytes) {
+    if (!bytes || bytes.length !== 2) return null;
+    return bytesToInt(bytes);
+  }
+
+  function rawfloat(bytes) {
+    if (!bytes || bytes.length !== 4) return null;
+
+    var bits =
+      (bytes[3] << 24) |
+      (bytes[2] << 16) |
+      (bytes[1] << 8) |
+      bytes[0];
+
+    var sign = (bits >>> 31 === 0) ? 1.0 : -1.0;
+    var e = (bits >>> 23) & 0xff;
+    var m = (e === 0)
+      ? (bits & 0x7fffff) << 1
+      : (bits & 0x7fffff) | 0x800000;
+
+    return sign * m * Math.pow(2, e - 150);
+  }
+
+  // Round value to appropriate decimal places based on measurement type
+  function roundToMeaningful(value, dataName) {
+    // Define decimal places for each measurement type
+    const decimalPlaces = {
+      // Temperature and humidity - 2 decimals
+      'temp': 2, 'hum': 2, 'Battery': 2,
+      // Pressure - 1 decimal
+      'press': 1,
+      // Distance/altitude - 1 decimal
+      'height': 1, 'alt': 1, 'DEPTH': 1,
+      // Electrical measurements - appropriate decimals
+      'KOHM': 2, 'VOLT': 3,
+      // pH - 2 decimals
+      'PH': 2,
+      // Sound - 1 decimal
+      'SOUND': 1, 'DBA': 1,
+      // UV - 2 decimals
+      'UV_I': 2,
+      // Angle - 1 decimal
+      'ANGLE': 1, 'DIRECTION': 1,
+      // Speed - 1 decimal
+      'SPEED': 1, 'wind_spd': 1,
+      // Gas concentrations - 1 decimal
+      'H2': 1, 'CO': 1, 'CO2': 1, 'NO2': 1, 'NH3': 1,
+      'C4H10': 1, 'C3H8': 1, 'CH4': 1, 'C2H5OH': 1,
+      // Other measurements - 2 decimals default
+      'OPR': 2, 'DO': 2, 'EC': 2, 'MV': 2, 'MGL': 2, 'MSCM': 2,
+      // Integer values - 0 decimals (already integers from uint16)
+      'TDS': 0, 'MOIS': 0, 'LUX': 0, 'Ambient': 0, 'RGB': 0,
+      'red': 0, 'green': 0, 'blue': 0, 'clear': 0, 'BPM': 0
+    };
+
+    const decimals = decimalPlaces[dataName] !== undefined ? decimalPlaces[dataName] : 2;
+    const factor = Math.pow(10, decimals);
+    return Math.round(value * factor) / factor;
+  }
+
+  const decoders = {
+    temp: { fn: temperature, size: 2 },
+    humidity: { fn: humidity, size: 2 },
+    uint16: { fn: uint16, size: 2 },
+    rawfloat: { fn: rawfloat, size: 4 }
+  };
+
+  const valueOrders = [
+    { data_name: "Battery", encoding: "temp" },
+    { data_name: "temp", encoding: "temp" },
+    { data_name: "hum", encoding: "humidity" },
+    { data_name: "press", encoding: "rawfloat" },
+    { data_name: "height", encoding: "temp" },
+    { data_name: "TDS", encoding: "uint16" },
+    { data_name: "MOIS", encoding: "uint16" },
+    { data_name: "LUX", encoding: "uint16" },
+    { data_name: "Ambient", encoding: "uint16" },
+    { data_name: "H2", encoding: "uint16" },
+    { data_name: "CO", encoding: "uint16" },
+    { data_name: "CO2", encoding: "uint16" },
+    { data_name: "NO2", encoding: "uint16" },
+    { data_name: "NH3", encoding: "uint16" },
+    { data_name: "C4H10", encoding: "uint16" },
+    { data_name: "C3H8", encoding: "uint16" },
+    { data_name: "CH4", encoding: "uint16" },
+    { data_name: "C2H5OH", encoding: "uint16" },
+    { data_name: "alt", encoding: "uint16" },
+    { data_name: "OPR", encoding: "rawfloat" },
+    { data_name: "DO", encoding: "temp" },
+    { data_name: "EC", encoding: "temp" },
+    { data_name: "PH", encoding: "temp" },
+    { data_name: "SOUND", encoding: "temp" },
+    { data_name: "DEPTH", encoding: "rawfloat" },
+    { data_name: "UV_I", encoding: "temp" },
+    { data_name: "RGB", encoding: "uint16" },
+    { data_name: "ANGLE", encoding: "temp" },
+    { data_name: "KOHM", encoding: "rawfloat" },
+    { data_name: "red", encoding: "uint16" },
+    { data_name: "green", encoding: "uint16" },
+    { data_name: "blue", encoding: "uint16" },
+    { data_name: "clear", encoding: "uint16" },
+    { data_name: "wind_dir", encoding: "uint16" },
+    { data_name: "wind_spd", encoding: "rawfloat" },
+    { data_name: "BPM", encoding: "uint16" }
+  ];
+
   while (b.length > 0) {
-    // read value order number
-    let n = uint8.BYTES;
-    let rv = b.slice(0, n);
-    b = b.slice(n);
-    let von = uint8(rv);
+    let res = safeSlice(b, 1);
+    if (!res) break;
 
-    // read value
+    let idBytes = res[0];
+    b = res[1];
+
+    let von = idBytes[0];
     let vo = valueOrders[von];
-    n = decoders[vo.encoding].BYTES;
-    rv = b.slice(0, n);
-    b = b.slice(n);
-    let v = decoders[vo.encoding](rv);
 
-    // add to output data
+    if (!vo) {
+      warnings.push("Unknown value order: " + von);
+      break;
+    }
+
+    let decoder = decoders[vo.encoding];
+    res = safeSlice(b, decoder.size);
+    if (!res) break;
+
+    let dataBytes = res[0];
+    b = res[1];
+
+    let v = decoder.fn(dataBytes);
+    if (v === null) continue;
+
+    // Round value to meaningful decimal places
+    v = roundToMeaningful(v, vo.data_name);
+
     if (vo.data_name in count) {
       output[vo.data_name + count[vo.data_name]] = v;
-      count[vo.data_name] += 1;
+      count[vo.data_name]++;
     } else {
       output[vo.data_name] = v;
       count[vo.data_name] = 1;
     }
   }
+
   return {
     data: output,
-    warnings: [],
+    warnings: warnings,
     errors: []
   };
 }

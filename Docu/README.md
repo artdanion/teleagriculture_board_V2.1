@@ -95,7 +95,7 @@ Sensor Value:     `sensorVector[i].measurements[j].value`
 
 The teleAgriCulture Board V2.1 supports a variety of sensors through its connectors. The currently implemented sensors are listed in the `SensorsImplemented` enum in `lib/init_TAC/src/def_Sensors.h`:
 
---> VERSION 1.80 (30 sensors)
+--> VERSION 1.80 (31 sensors)
 
 - BMP_280: A temperature and pressure sensor.
 - LEVEL: A water level sensor.
@@ -105,6 +105,7 @@ The teleAgriCulture Board V2.1 supports a variety of sensors through its connect
 - CAP_GROOVE: A capacitive groove moisture sensor.
 - DHT_22: A temperature and humidity sensor.
 - DS18B20: A temperature sensor.
+- HEART_RATE: Gravity Heart Rate Monitor Sensor (SEN0203 based on AD8232), outputs BPM via ADC
 - MULTIGAS: A multi-gas sensor. <mark>`gas.begin(Wire, 0x08);` I2C Address is used<mark>
 - MULTIGAS_V1: An older version of the multi-gas sensor. <mark>`multiGasV1.begin(0x04);` I2C Address is used<mark>
 - DS3231: A real-time clock module
@@ -202,6 +203,7 @@ for technical questions you can write me an email: artdanion at gmail.com
 - DHT11
 - DHT22
 - DS18B20
+- HEART_RATE (Gravity Heart Rate Monitor Sensor SEN0203 based on AD8232)
 - LTR_390
 - MultiGasV1
 - MultiGasV2
@@ -297,6 +299,7 @@ The payload is a **flat JSON object** — one key per measurement, plus an optio
 | `flame` | V | DFRobot flame sensor |
 | `wind_dir` | deg | SparkFun wind vane (0–360°, 16 steps) |
 | `wind_spd` | km/h | SparkFun anemometer |
+| `BPM` | bpm | Gravity Heart Rate Monitor Sensor (SEN0203) |
 | `time` | string | Timestamp — `"YYYY-MM-DD HH:MM:SS TZ"` |
 
 ## LIVE Mode (MQTT / OSC)

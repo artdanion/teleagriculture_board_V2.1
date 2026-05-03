@@ -109,6 +109,8 @@ ValueOrder getValueOrderFromString(String str)
     return DIRECTION;
   if (str == "SPEED")
     return SPEED;
+  if (str == "BPM")
+    return BPM;
 
   return NOT;
 }
@@ -761,6 +763,20 @@ const char *proto_sensors = R"([
         "valueOrder": "SPEED",
         "unit": "km/h",
         "data_name": "wind_spd"
+      }
+    ]
+  },
+  {
+    "sensor-id": 31,
+    "name": "Heart BPM",
+    "con_typ": "ADC",
+    "returnCount": 1,
+    "measurements": [
+      {
+        "value": 70,
+        "valueOrder": "BPM",
+        "unit": "bpm",
+        "data_name": "BPM"
       }
     ]
   }

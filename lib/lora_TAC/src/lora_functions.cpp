@@ -351,6 +351,14 @@ void lora_sendData(void)
                Serial.print(" Value: ");
                Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
+            case BPM:
+               message.addUint16(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
             }
          }
       }
