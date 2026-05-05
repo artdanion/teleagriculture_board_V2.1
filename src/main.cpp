@@ -2,7 +2,7 @@
  *
  * TeleAgriCulture Board Firmware
  *
- * Copyright (c) 2025 artdanion
+ * Copyright (c) 2026 artdanion
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
  *
 
 
-/*********************************** VERSION 1.90 ****************************
+/*********************************** VERSION 1.92 ****************************
 /*
  *
  * board credentials are in /include/board_credentials.h  (BoardID, API_KEY and LORA credentials)
@@ -34,7 +34,7 @@
  * ------> Config Portal opens after double reset or holding BooT button for > 5sec
  *____________________________________________________________
  *
- * Config Portal Access Point:   SSID: TAC-XXXXXX (unique per board, last 6 hex chars of MAC ->since v.1.85)
+ * Config Portal Access Point:   SSID: TAC-XXXX (unique per board, last 4 hex chars of MAC ->since v.1.85)
  *                               pasword: enter123
  *____________________________________________________________
  *
@@ -70,8 +70,10 @@
 #include <web_functions.h>
 #include <calibrate_functions.h>
 #include <lora_functions.h>
+
 #define LOG_TAG "MAIN"     // must be before debug_functions.h include
 #include <debug_functions.h>
+
 #include <sensor_Read.hpp> // Sensor read handling
 #include <WiFiManagerTz.h> // Setup Page html rendering and Web UI input handling ( save_Config() and save_Connectors() gets called in /lib/WiFiManagerTz.h handleValues() )
 #include <RTClib.h>
@@ -83,8 +85,10 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 bool configPortal_run = false;
 
-// WiFi AP SSID (generated unique per board)
-String boardSSID;
+// WiFi AP SSIDs and hostname (unique per board)
+String boardConfigSSID;
+String boardDashSSID;
+String boardHostname;
 
 // ----- Function declaration -----//
 void openConfig(void);
@@ -120,12 +124,12 @@ void onMqttMessage(char *topic, byte *payload, unsigned int len);
 TaskHandle_t configTaskHandle;
 void configButtonTask(void *parameter);
 
-// Generate unique SSID from MAC address (last 6 hex chars)
-String generateUniqueSSID() {
+// Generate unique SSID from MAC address (unique device bytes, not OUI prefix)
+String generateUniqueSSID(const char* prefix) {
   uint64_t chipid = ESP.getEfuseMac();
-  char ssid[16];
-  snprintf(ssid, sizeof(ssid), "TAC-%02X%02X%02X",
-    (uint8_t)(chipid >> 16), (uint8_t)(chipid >> 8), (uint8_t)chipid);
+  char ssid[32];
+  snprintf(ssid, sizeof(ssid), "%s_%02X%02X",
+    prefix, (uint8_t)(chipid >> 40), (uint8_t)(chipid >> 32));
   return String(ssid);
 }
 
@@ -137,8 +141,11 @@ void setup()
    delay(2000);
 #endif
 
-   // Generate unique SSID for this board
-   boardSSID = generateUniqueSSID();
+   // Generate unique SSIDs and hostname for this board (based onn MAC adress)
+   boardConfigSSID = generateUniqueSSID("TAC_config");
+   boardDashSSID   = generateUniqueSSID("TAC_dash");
+   boardHostname   = generateUniqueSSID("tac");
+   hostname        = boardHostname;
 
    initBoard();
    initFiles();
@@ -257,7 +264,7 @@ void openConfig()
    startBlinking(); // Start blinking an LED to indicate configuration mode
 
    backlight_pwm = 200;
-   analogWrite(TFT_BL, backlight_pwm); // Backlight on for config mode
+   analogWrite(TFT_BL, backlight_pwm); // Backlight on for config mode... in deepsleep its off
 
    setUPWiFi();
 
@@ -267,17 +274,17 @@ void openConfig()
    wifiManager.setAPCallback(configModeCallback);
    Serial.print("Board ID: ");
    Serial.println(boardID);
-   Serial.print("SSID: ");
-   Serial.println(boardSSID);
+   Serial.print("Config Portal SSID: ");
+   Serial.println(boardConfigSSID);
    Serial.println("PW: enter123");
 
    wifiManager.setCleanConnect(true);
 
-   if (!wifiManager.startConfigPortal(boardSSID.c_str(), "enter123"))
+   if (!wifiManager.startConfigPortal(boardConfigSSID.c_str(), "enter123"))
    {
       Serial.println("failed to connect and hit timeout");
       delay(3000);
-      ESP.restart(); // Failed to connect, restart ESP32
+      ESP.restart();
    }
    ESP.restart();
 }
@@ -347,7 +354,7 @@ void setUPWiFi()
    wifiManager.setConfigPortalBlocking(true);
    wifiManager.setTimeout(900); // set timeout for ConfigPortal to 15min (900s)
 
-   // /!\ make sure "custom" is listed there as it's required to pull the "Board Setup" button
+   //custom menu added to WiFiMAnager
    std::vector<const char *> menu = {"custom", "wifi", "info", "update", "restart", "exit"};
    wifiManager.setMenu(menu);
 
@@ -361,7 +368,6 @@ void setUPWiFi()
 
 void wifi_sendData(void)
 {
-   // 1) Vorab: Wie viele Messwerte senden wir wirklich? (clamp auf measurements[8])
    size_t nItems = 0;
    size_t keyBytes = 0;
 
@@ -385,18 +391,16 @@ void wifi_sendData(void)
          if (isnan(m.value))
             continue;
          ++nItems;
-         keyBytes += (size_t)m.data_name.length() + 1; // +1 minimaler Slop
+         keyBytes += (size_t)m.data_name.length() + 1;
       }
    }
 
-   // 2) JSON-Dokument dimensionieren (Faustregel)
    const size_t capacity = JSON_OBJECT_SIZE(nItems + 1) + keyBytes + nItems * 16 + 64;
    DynamicJsonDocument docMeasures(capacity);
 
    LOGD("build JSON: sensors=%u, items=%u, capacity=%u",
         (unsigned)sensorVector.size(), (unsigned)nItems, (unsigned)capacity);
 
-   // 3) JSON füllen (wieder mit clamp)
    for (size_t i = 0; i < sensorVector.size(); ++i)
    {
       const Sensor &s = sensorVector[i];
@@ -441,14 +445,14 @@ void wifi_sendData(void)
    serializeJson(docMeasures, output);
 
    if (output.length() <= 2)
-   { // "{}" == 2 Zeichen
+   { // "{}" 
       LOGI("kein sendbarer Inhalt (empty JSON)");
       return;
    }
 
    LOGD("payload bytes=%u", (unsigned)output.length());
 
-   // 5) WiFi/TLS/HTTP – sauber & mit Logs
+
    if (WiFi.status() != WL_CONNECTED)
    {
       LOGW("WiFi disconnected, abort");
@@ -458,15 +462,15 @@ void wifi_sendData(void)
    const String serverName = "https://kits.teleagriculture.org/api/kits/" + String(boardID) + "/measurements";
    const String api_Bearer = "Bearer " + API_KEY;
 
-   // Token nicht im Klartext loggen – nur die letzten 6 Zeichen
+
    String api_tail = (API_KEY.length() > 6) ? API_KEY.substring(API_KEY.length() - 6) : API_KEY;
    LOGI("POST %s (items=%u), token[..%s]", serverName.c_str(), (unsigned)nItems, api_tail.c_str());
 
    WiFiClientSecure client;
-   client.setCACertBundle(rootca_bundle_crt_start); // erwartet, dass dein Bundle eingebunden ist
+   client.setCACertBundle(rootca_bundle_crt_start);
 
    HTTPClient https;
-   // begin() liefert bool – prüfen
+
    if (!https.begin(client, serverName))
    {
       LOGE("HTTPS begin() failed");
@@ -475,7 +479,7 @@ void wifi_sendData(void)
 
    https.addHeader("Content-Type", "application/json");
    https.addHeader("Authorization", api_Bearer);
-   // Optional: Timeout etwas strenger
+
    https.setTimeout(5000);
 
    const int httpCode = https.POST((uint8_t *)output.c_str(), output.length());
@@ -507,7 +511,7 @@ void connectIfWifi()
    // set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
    wifiManager.setAPCallback(configModeCallback);
 
-   bool success = wifiManager.autoConnect(boardSSID.c_str(), "enter123");
+   bool success = wifiManager.autoConnect(boardConfigSSID.c_str(), "enter123");
 
    if (!success)
    {
@@ -637,15 +641,15 @@ void setupWebpageIfNeeded()
       return;
 
    WiFi.mode(WIFI_AP_STA);
-   WiFi.softAP(boardSSID.c_str(), "enter123");
+   WiFi.softAP(boardDashSSID.c_str(), "enter123");
 
    IPAddress IP = WiFi.softAPIP();
    Serial.print("Dashboard AP: ");
-   Serial.print(boardSSID);
+   Serial.print(boardDashSSID);
    Serial.print("  IP: ");
    Serial.println(IP);
 
-   if (MDNS.begin("esp32"))
+   if (MDNS.begin(boardHostname.c_str()))
    {
       Serial.println("MDNS responder started");
    }
@@ -671,7 +675,7 @@ void setupMQTTIfNeeded()
    setUPWiFi();
 
    wifiManager.setAPCallback(configModeCallback);
-   bool success = wifiManager.autoConnect(boardSSID.c_str(), "enter123");
+   bool success = wifiManager.autoConnect(boardConfigSSID.c_str(), "enter123");
    if (!success)
    {
       Serial.println("Failed to connect");
@@ -709,7 +713,6 @@ void setupMQTTIfNeeded()
    mqtt.setKeepAlive(30);
    mqtt.setBufferSize(2048);
 
-   // NEW: actually connect now
    mqttConnectNow();
 
    Serial.println("MQTT Setup done...");
@@ -722,7 +725,7 @@ void setupOSCIfNeeded()
 
    setUPWiFi();
    wifiManager.setAPCallback(configModeCallback);
-   if (!wifiManager.autoConnect(boardSSID.c_str(), "enter123"))
+   if (!wifiManager.autoConnect(boardConfigSSID.c_str(), "enter123"))
    {
       Serial.println("Failed to connect");
       ESP.restart();
@@ -879,7 +882,6 @@ void configButtonTask(void *parameter)
 
    for (;;)
    {
-      // upButton pressed?
       if (upButton.read() == Button::PRESSED)
       {
          if (!pressed)
@@ -909,8 +911,9 @@ void configButtonTask(void *parameter)
             esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(0));
             esp_task_wdt_delete(xTaskGetIdleTaskHandleForCPU(1));
             wifiManager.setCleanConnect(true);
+
             // start configuration portal
-            if (!wifiManager.startConfigPortal(boardSSID.c_str(), "enter123"))
+            if (!wifiManager.startConfigPortal(boardConfigSSID.c_str(), "enter123"))
             {
                Serial.println("failed to connect and hit timeout");
                delay(3000);
@@ -982,10 +985,10 @@ void handleLoraLoop()
          }
          SD_sendData(); // Send data to SD Card
 
-         saveDataSDCard = false; // Reset the flag
+         saveDataSDCard = false;
       }
 
-      lora_sendData(); // Send data via LoRa
+      lora_sendData();
    }
 
    if (loraJoinFailed && useDisplay)
@@ -1018,7 +1021,7 @@ void handleLoraLoop()
          saveLMICToRTC(TX_INTERVAL);
          delay(200);
 
-         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
+         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ALL_LOW);
          int time_interval = upload_interval * uS_TO_MIN_FACTOR;
          esp_sleep_enable_timer_wakeup(time_interval);
 
@@ -1081,9 +1084,9 @@ void handleWiFiLoop()
       delay(1000);
       wifi_sendData(); // Send data via WiFi
 
-      sendDataWifi = false; // Reset the flag
+      sendDataWifi = false;
 
-      setUploadTime(); // Set the next upload time
+      setUploadTime();
 
       if ((!useBattery || !gotoSleep) && useDisplay)
       {
@@ -1098,7 +1101,7 @@ void handleWiFiLoop()
          wifiManager.disconnect();
          WiFi.mode(WIFI_OFF);
 
-         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
+         esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ALL_LOW);
          if (upload_interval == 60)
          {
             esp_sleep_enable_timer_wakeup((seconds_to_next_hour() - 15) * uS_TO_S_FACTOR);
@@ -1165,13 +1168,13 @@ void handleSDLoop()
       return;
    }
 
-   sensorRead(); // Read sensor data
+   sensorRead(); 
    delay(1000);
    SD_sendData(); // Send data to SD Card
 
-   useSDCard = false; // Reset the flag
+   useSDCard = false;
 
-   setUploadTime(); // Set the next upload time
+   setUploadTime();
 
    if ((!useBattery || !gotoSleep) && useDisplay)
    {
@@ -1184,7 +1187,7 @@ void handleSDLoop()
       wifiManager.disconnect();
       WiFi.mode(WIFI_OFF);
 
-      esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ANY_LOW);
+      esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK, ESP_EXT1_WAKEUP_ALL_LOW);
       if (upload_interval == 60)
       {
          esp_sleep_enable_timer_wakeup((seconds_to_next_hour() - 15) * uS_TO_S_FACTOR);
@@ -1264,7 +1267,6 @@ void handleOSCLoop()
 }
 
 // callback function, fired when NTP gets updated.
-// Used to print the updated time or adjust an external RTC module.
 void on_time_available(struct timeval *t)
 {
    const char *tz = timeZone.c_str();
@@ -1288,7 +1290,6 @@ void on_time_available(struct timeval *t)
 }
 
 // callback function, fired when WiFiManager is in config mode
-// Used to change UI on display
 void configModeCallback(WiFiManager *myWiFiManager)
 {
 #if DEBUG_PRINT
@@ -1336,4 +1337,5 @@ void configModeCallback(WiFiManager *myWiFiManager)
 void onMqttMessage(char *topic, byte *payload, unsigned int len)
 {
    // handle commands if you subscribe later
+   // future implement??
 }
