@@ -83,7 +83,7 @@
 
 #define DEBUG_PRINT false // full debug print
 #define DOUBLERESETDETECTOR_DEBUG true
-bool configPortal_run = false;
+volatile bool configPortal_run = false;
 
 // WiFi AP SSIDs and hostname (unique per board)
 String boardConfigSSID;
@@ -455,8 +455,14 @@ void wifi_sendData(void)
 
    if (WiFi.status() != WL_CONNECTED)
    {
-      LOGW("WiFi disconnected, abort");
-      return;
+      LOGW("WiFi disconnected, attempting reconnect");
+      WiFi.reconnect();
+      for (int i = 0; i < 50 && WiFi.status() != WL_CONNECTED; i++) delay(100);
+      if (WiFi.status() != WL_CONNECTED)
+      {
+         LOGW("WiFi reconnect failed, abort");
+         return;
+      }
    }
 
    const String serverName = "https://kits.teleagriculture.org/api/kits/" + String(boardID) + "/measurements";
@@ -553,6 +559,12 @@ void connectIfWifi()
    }
 
    stopBlinking();
+
+   if (configSaved) {
+      Serial.println("WiFi credentials saved, restarting to apply");
+      delay(500);
+      ESP.restart();
+   }
 }
 
 void setupLoRaIfNeeded()
@@ -684,6 +696,12 @@ void setupMQTTIfNeeded()
 
    Serial.println("WiFi connected");
 
+   if (configSaved) {
+      Serial.println("WiFi credentials saved, restarting to apply");
+      delay(500);
+      ESP.restart();
+   }
+
    if (live_mode == "MQTT")
       sendDataMQTT = true;
 
@@ -731,6 +749,12 @@ void setupOSCIfNeeded()
       ESP.restart();
    }
    Serial.println("WiFi connected");
+
+   if (configSaved) {
+      Serial.println("WiFi credentials saved, restarting to apply");
+      delay(500);
+      ESP.restart();
+   }
 
    sendDataOSC = true;
 
@@ -882,7 +906,7 @@ void configButtonTask(void *parameter)
 
    for (;;)
    {
-      if (upButton.read() == Button::PRESSED)
+      if (digitalRead(LEFT_BUTTON_PIN) == LOW)
       {
          if (!pressed)
          {
@@ -1076,8 +1100,6 @@ void handleLoraLoop()
 
 void handleWiFiLoop()
 {
-   wifiManager.process(); // Process WiFi manager tasks
-
    if (sendDataWifi)
    {
       sensorRead(); // Read sensor data
@@ -1279,9 +1301,8 @@ void on_time_available(struct timeval *t)
    {
       rtc.adjust(DateTime(t->tv_sec));
       Serial.println("RTC updated from NTP");
+      setESP32timeFromRTC(timeZone.c_str());
    }
-
-   setESP32timeFromRTC(timeZone.c_str()); // Set the time on ESP32 using the RTC module
 
 #if DEBUG_PRINT
    printLocalTime();

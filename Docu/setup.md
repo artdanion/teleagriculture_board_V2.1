@@ -24,6 +24,10 @@ Connect to board via WiFi (on your Mobile phone or Notebook)
 
 Config Portal opens automatically or open IP: 192.168.4.1 in a browser (on the device you connected to the Board WiFi)
 
+> **iPhone / iPad (iOS 14+)**
+> iOS tries to detect the config portal over HTTPS first, which the board does not support. It falls back to HTTP after a few seconds — the "Login to network" popup will appear, just with a short delay (3–5 s). If the popup does not appear at all, open **Safari** and navigate manually to **`http://192.168.4.1`**. This bypasses the automatic detection entirely and opens the config portal directly.
+
+
 <img src="https://gitlab.com/teleagriculture/community/-/raw/main/teleAgriCulture%20Board%20V2.1/Docu/pictures/board_config_page.jpg" alt="Board Config Page" width="400" height="400">
 
 Now you can change your board settings (WiFi Network, Upload, Sensors, Timezone...)

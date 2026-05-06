@@ -406,12 +406,12 @@ namespace WiFiManagerNS
     TimeConfHTML += "<label for='logtosd'> Log to SD Card</label><br>";
 
     TimeConfHTML += "<BR><label for='up_interval'>Upload Interval:</label>";
-    TimeConfHTML += "<select id='up_interval' name='up_interval'>"
-                    "<option value=2>2 min</option>"
-                    "<option value=10>10 min</option>"
-                    "<option value=30>30 min</option>"
-                    "<option value=60>60 min</option>"
-                    "</select>";
+    TimeConfHTML += "<select id='up_interval' name='up_interval'>";
+    TimeConfHTML += String("<option value='2'")   + (upload_interval == 2  ? " selected" : "") + ">2 min</option>";
+    TimeConfHTML += String("<option value='10'")  + (upload_interval == 10 ? " selected" : "") + ">10 min</option>";
+    TimeConfHTML += String("<option value='30'")  + (upload_interval == 30 ? " selected" : "") + ">30 min</option>";
+    TimeConfHTML += String("<option value='60'")  + (upload_interval == 60 ? " selected" : "") + ">60 min</option>";
+    TimeConfHTML += "</select>";
 
     TimeConfHTML += "</div><div>";
 
@@ -597,7 +597,7 @@ namespace WiFiManagerNS
     TimeConfHTML += "<label for='ntp-server-interval'>Sync interval:</label>";
     TimeConfHTML += "<select id='ntp-server-interval' name='ntp-server-interval'>"
                     "<option value=60>Hourly</option>"
-                    "<option value=14400>Daily</option>"
+                    "<option value=1440>Daily</option>"
                     "<option value=10080>Weekly</option>"
                     "</select></div><br>";
 
@@ -763,6 +763,22 @@ namespace WiFiManagerNS
 
     _wifiManager->server->on("/saved", HTTP_GET, handleSavedPage);
     _wifiManager->server->on("/reboot", HTTP_POST, handleReboot);
+
+    // Explicit handlers for OS captive-portal probe URLs so WebServer
+    // doesn't log [E] _handleRequest errors before the not-found handler runs.
+    auto captiveRedirect = []() {
+      String url = "http://" + WiFi.softAPIP().toString() + "/";
+      WiFiManagerNS::_wifiManager->server->sendHeader("Location", url, true);
+      WiFiManagerNS::_wifiManager->server->send(302, "text/plain", "Redirecting to portal");
+    };
+    _wifiManager->server->on("/generate_204",        captiveRedirect); // Android
+    _wifiManager->server->on("/gen_204",             captiveRedirect); // Android (old)
+    _wifiManager->server->on("/hotspot-detect.html", captiveRedirect); // Apple
+    _wifiManager->server->on("/library/test/success.html", captiveRedirect); // Apple
+    _wifiManager->server->on("/ncsi.txt",            captiveRedirect); // Windows
+    _wifiManager->server->on("/connecttest.txt",     captiveRedirect); // Windows
+    _wifiManager->server->on("/redirect",            captiveRedirect); // Windows
+    _wifiManager->server->on("/success.txt",         captiveRedirect); // Firefox
   }
 
   // --- saved settings page ---
@@ -917,9 +933,24 @@ namespace WiFiManagerNS
   // --- Reboot-Handler ---
   void handleReboot()
   {
-    WiFiManagerNS::_wifiManager->server->send(200, "text/plain", "Rebooting...");
+    const String html = F(
+        "<!DOCTYPE html><html><head>"
+        "<meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Rebooting</title>"
+        "<style>"
+        "body{background:#111;color:#eee;font-family:sans-serif;"
+        "display:flex;align-items:center;justify-content:center;"
+        "min-height:100vh;margin:0;text-align:center}"
+        "h2{color:#3b82f6}p{color:#9aa;font-size:14px}"
+        "</style></head><body><div>"
+        "<h2>Rebooting&hellip;</h2>"
+        "<p>Board is restarting with new settings.</p>"
+        "<p>You can close this window and reconnect to your WiFi.</p>"
+        "</div></body></html>");
+    WiFiManagerNS::_wifiManager->server->send(200, "text/html", html);
     WiFiManagerNS::_wifiManager->server->client().flush();
-    delay(250);
+    delay(2000); // give the browser (especially iOS CNA) time to receive and display the page
     ESP.restart();
   }
 
@@ -1370,8 +1401,8 @@ namespace WiFiManagerNS
 
     digitalWrite(SW_3V3, HIGH);
     digitalWrite(SW_5V, HIGH);
+    delay(200); // allow sensors on switched rails to power up before scanning
 
-    Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
     for (address = 1; address < 127; address++)
     {
       Wire.beginTransmission(address);
@@ -1404,7 +1435,6 @@ namespace WiFiManagerNS
         }
       }
     }
-    Wire.endTransmission();
     digitalWrite(SW_3V3, LOW);
     digitalWrite(SW_5V, LOW);
 
