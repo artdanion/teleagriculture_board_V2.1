@@ -17,22 +17,30 @@ built around an **ESP32-S3**. Firmware is a VS Code / PlatformIO project.
 
 ## Table of Contents
 
-- [What is TeleAgriCulture?](#what-is-teleagriculture)
-- [What can you do with the board?](#what-can-you-do-with-the-board)
-- [Quick Start (for board owners)](#quick-start-for-board-owners)
-- [Board Functions](#board-functions)
-  - [Navigation](#navigation)
-  - [Configuration Mode](#configuration-mode)
-  - [Serial Monitor](#serial-monitor)
-  - [Upload modes & LIVE mode](#upload-modes--live-mode)
-  - [AP Mode (live dashboard)](#ap-mode-live-dashboard)
-  - [SD Card Logging](#sd-card-logging)
-- [Firmware & OTA Updates](#firmware--ota-updates)
-- [Troubleshooting](#troubleshooting)
-- [For Developers](#for-developers)
-- [Documentation](#documentation)
-- [Implemented Sensors](#implemented-sensors)
-- [Community & Data API](#community--data-api)
+- [TeleAgriCulture Board V2.1](#teleagriculture-board-v21)
+  - [Table of Contents](#table-of-contents)
+  - [What is TeleAgriCulture?](#what-is-teleagriculture)
+  - [What can you do with the board?](#what-can-you-do-with-the-board)
+  - [Quick Start (for board owners)](#quick-start-for-board-owners)
+  - [Board Functions](#board-functions)
+    - [Navigation](#navigation)
+    - [Configuration Mode](#configuration-mode)
+    - [Serial Monitor](#serial-monitor)
+    - [Upload modes \& LIVE mode](#upload-modes--live-mode)
+    - [AP Mode (live dashboard)](#ap-mode-live-dashboard)
+    - [SD Card Logging](#sd-card-logging)
+  - [Firmware \& OTA Updates](#firmware--ota-updates)
+  - [Troubleshooting](#troubleshooting)
+  - [For Developers](#for-developers)
+    - [Build \& flash from source](#build--flash-from-source)
+    - [Platform-specific setup (CLI / no editor needed)](#platform-specific-setup-cli--no-editor-needed)
+    - [Credentials \& helper scripts](#credentials--helper-scripts)
+    - [Known issue: `ModuleNotFoundError: No module named 'intelhex'`](#known-issue-modulenotfounderror-no-module-named-intelhex)
+    - [Architecture \& deep dive](#architecture--deep-dive)
+    - [Contributing](#contributing)
+  - [Documentation](#documentation)
+  - [Implemented Sensors](#implemented-sensors)
+  - [Community \& Data API](#community--data-api)
 
 ---
 
@@ -103,6 +111,7 @@ To open the Config Portal again after setup, use either method:
 Available at a baud rate of **115200**.
 
 ### Upload modes & LIVE mode
+- **WiFi Upload** - JSON https POST + bearer to kits.teleagriculture.org
 - **LoRa Upload** — long-range, low-power data transmission.
 - **No Upload** — run without sending data; useful for local processing or storage.
 - **LIVE Mode (MQTT / OSC)** — stream sensor data in real time over the local network,
@@ -175,6 +184,7 @@ on the Config Portal — lives in the [`Firmware/`](Firmware) folder
 ## For Developers
 
 This is a **VS Code + PlatformIO** project for the ESP32-S3.
+But you can for sure use your favorite IDE VIM/eMACs what ever with the platformio CLI setup
 
 ### Build & flash from source
 1. Install [VS Code](https://code.visualstudio.com) and the
@@ -185,6 +195,90 @@ This is a **VS Code + PlatformIO** project for the ESP32-S3.
    ```bash
    pio run -e EU -t upload      # swap EU for your region
    ```
+
+### Platform-specific setup (CLI / no editor needed)
+
+Prefer the command line? The PlatformIO CLI works the same on every OS — see the
+[official install docs](https://docs.platformio.org/en/latest/core/installation/index.html).
+The recipes below get you from a clean machine to a flashed board.
+
+<details>
+<summary><b>Linux</b> (CLI, no editor needed)</summary>
+
+```bash
+# 1. Install dependencies
+sudo apt install python3 python3-pip git    # Debian/Ubuntu
+sudo pacman -S python python-pip git         # Arch
+sudo dnf install python3 python3-pip git    # Fedora
+
+# 2. Install PlatformIO
+pip3 install --user platformio
+export PATH="$HOME/.local/bin:$PATH"         # add to ~/.bashrc to persist
+
+# 3. USB access (once)
+sudo usermod -aG dialout $USER
+sudo udevadm control --reload-rules && sudo udevadm trigger
+# log out and back in
+
+# 4. Clone & configure
+git clone https://github.com/TeleAgriCulture/main.git
+cd main
+cp include/board_credentials.template.h include/board_credentials.h
+nano include/board_credentials.h             # fill in BOARD_ID, API_KEY, ...
+
+# 5. Build & upload (EU region)
+pio run -e EU --target upload
+
+# 6. Serial monitor
+pio device monitor --baud 115200
+```
+</details>
+
+<details>
+<summary><b>macOS</b> (CLI, no editor needed)</summary>
+
+```bash
+# 1. Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Install dependencies
+brew install python git
+
+# 3. Install PlatformIO
+pip3 install --user platformio
+export PATH="$HOME/.local/bin:$PATH"         # add to ~/.zshrc to persist
+
+# 4. Clone & configure
+git clone https://github.com/TeleAgriCulture/main.git
+cd main
+cp include/board_credentials.template.h include/board_credentials.h
+open -e include/board_credentials.h          # fill in BOARD_ID, API_KEY, ...
+
+# 5. Build & upload (EU region)
+pio run -e EU --target upload
+
+# 6. Serial monitor
+pio device monitor --baud 115200
+```
+</details>
+
+<details>
+<summary><b>Windows</b> (recommended: VS Code + PlatformIO extension)</summary>
+
+1. Install [VS Code](https://code.visualstudio.com).
+2. Open Extensions (`Ctrl+Shift+X`) → search **"PlatformIO IDE"** → Install.
+3. Install [Git for Windows](https://git-scm.com/download/win).
+4. Open a terminal (Git Bash or the VS Code terminal) and clone:
+   ```bash
+   git clone https://github.com/TeleAgriCulture/main.git
+   ```
+5. In VS Code: **File → Open Folder** → select the cloned folder.
+6. Copy `include/board_credentials.template.h` → `include/board_credentials.h` and fill in your data.
+7. Use the PlatformIO toolbar (bottom bar) to **Build / Upload / Monitor** — `EU` is the default environment.
+</details>
+
+> In every case, see **[README_credentials.md](README_credentials.md)** for exactly which
+> fields to fill in `board_credentials.h`.
 
 ### Credentials & helper scripts
 Each board's credentials (API key, LoRaWAN keys, MQTT server) are **compiled into the
