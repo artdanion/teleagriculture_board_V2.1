@@ -39,5 +39,10 @@ def copy_firmware(source, target, env):
     print(f"\n>>> Kopiere Firmware nach: {firmware_dst}")
     shutil.copy(firmware_src, firmware_dst)
 
-# Hook nach Build
-env.AddPostAction("$BUILD_DIR/firmware.bin", copy_firmware)
+# Board-spezifische Flashes (flash_board.py) setzen TAC_SKIP_RELEASE_COPY=1,
+# damit die Release-Firmware in Firmware/ nicht mit echten Credentials
+# ueberschrieben wird. Normale Builds und build_firmware.py kopieren wie gehabt.
+if os.environ.get("TAC_SKIP_RELEASE_COPY") == "1":
+    print(">>> copyFirmware: skip (TAC_SKIP_RELEASE_COPY=1, board flash)")
+else:
+    env.AddPostAction("$BUILD_DIR/firmware.bin", copy_firmware)
