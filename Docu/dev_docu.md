@@ -91,33 +91,18 @@ data/
 - Sensors as per [Sensor Support](#-sensor-support)
 
 ### 2) Credentials Configuration
-Create `include/board_credentials.h`:
+Create `include/board_credentials.h` by copying the committed template and filling in
+your values:
 
-```cpp
-// Board identification
-const String boardID = "YOUR_BOARD_ID";
-const String API_KEY = "YOUR_API_KEY";
-
-// LoRa credentials
-const String OTAA_DEVEUI = "YOUR_DEV_EUI";
-const String OTAA_APPEUI = "YOUR_APP_EUI"; 
-const String OTAA_APPKEY = "YOUR_APP_KEY";
-
-// MQTT credentials
-const String mqtt_server_ip = "YOUR_MQTT_BROKER";
-const int    mqtt_port      = 1883;
-const String mqtt_username  = "YOUR_USERNAME";
-const String mqtt_password  = "YOUR_PASSWORD";
-
-// OSC configuration
-const String osc_server_ip  = "YOUR_OSC_SERVER";
-const int    osc_port       = 8000;
-
-// Enterprise WiFi (optional)
-const String anonym         = "YOUR_IDENTITY";
-const String user_CA        = "YOUR_CA_CERT";
-const bool   useEnterpriseWPA = false;
+```bash
+cp include/board_credentials.template.h include/board_credentials.h
+# then edit board_credentials.h (boardID, API_KEY, OTAA_* keys, mqtt_server_ip)
 ```
+
+`board_credentials.h` is git-ignored. See **[README_credentials.md](../README_credentials.md)**
+for the full workflow (manual editing, or the `flash_board.py` / `build_firmware.py`
+helper scripts). The exact fields and their format are documented in
+`include/board_credentials.template.h`.
 
 ### 3) Build & Upload
 ```bash
@@ -135,7 +120,8 @@ pio device monitor -b 115200
 ```
 
 ### 4) First Configuration
-- Connect to AP **"TeleAgriCulture Board"** (password **"enter123"**)
+- Connect to the Config Portal AP **`TAC_config_XXXX`** (password **"enter123"**), where
+  `XXXX` is the last 4 hex digits of the board's MAC address
 - Complete portal setup (Wi‑Fi/LoRa/MQTT/OSC, sensors, time, display)
 - Alternatively, **double‑reset** or **hold BOOT > 5s** to enter config mode
 
@@ -191,7 +177,7 @@ pio device monitor -b 115200
 - **EXTRA** – General-purpose GPIO‑based sensors
 
 ### Implemented Sensors
-*in V 1.75*
+_Grouped overview. For the canonical, up-to-date list see [README.md – Implemented Sensors](../README.md#implemented-sensors)._
 
 #### Environmental Sensors
 - **BME280/BMP280/BMP680**: Temperature, humidity, pressure, gas resistance
@@ -232,7 +218,7 @@ pio device monitor -b 115200
 ## 💾 Configuration
 
 ### Web Configuration Portal
-- **Access**: WiFi AP `TeleAgriCulture Board` / password `enter123`  
+- **Access**: WiFi Config Portal AP `TAC_config_XXXX` / password `enter123` (`XXXX` = last 4 MAC hex digits)  
 - **Triggers**: Double‑reset detection, boot button > 5s, or `forceConfig` flag  
 - **Timeout**: 15 minutes (900 seconds) before auto-restart
 - **Features**: Dark mode UI, custom HTML forms, real-time validation
@@ -464,7 +450,7 @@ The loop() function processes:
 ### Build-Time Configuration Flags (platformio.ini)
 | Flag | Purpose | Default | Options |
 |------|---------|---------|---------|
-| `TAC_VERSION` | Firmware version string | `"1.75"` | String |
+| `TAC_VERSION` | Firmware version string | `"1.93"` | String |
 | `TAC_LOG_LEVEL` | Debug verbosity for TAC libraries | `3` | 0-5 |
 | `DEBUG_PRINT` | Master debug output control | `false` | true/false |
 | `ARDUINO_USB_MODE` | USB interface mode | `1` | CDC enabled |
@@ -506,9 +492,9 @@ cd teleagriculture_board_V2.1
 # Install PlatformIO
 pip install platformio
 
-# Create credentials file (copy from template)
-cp include/board_credentials.h.template include/board_credentials.h
-# Edit with your actual credentials
+# Create credentials file (copy from template, then edit)
+cp include/board_credentials.template.h include/board_credentials.h
+# Edit with your actual credentials (see README_credentials.md)
 
 # Install dependencies
 pio pkg install

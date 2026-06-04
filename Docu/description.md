@@ -1,24 +1,9 @@
+# Implemented Sensors
 
+This list moved to keep a single source of truth. For the complete, up-to-date list
+of implemented sensors with technical details (I2C addresses, datasheet links), see:
 
-## Implemented Sensors
+→ **[README.md – Implemented Sensors](../README.md#implemented-sensors)**
 
-- ADS1115
-- BH_1750
-- BME_280
-- BMP_280
-- BMP_680
-- DFR FLAME
-- DFR LIGHT
-- DFR LM35
-- DHT11
-- DHT22
-- DS18B20
-- HEART_RATE
-- LTR_390
-- MultiGasV1
-- MultiGasV2
-- RTCDS3231
-- SHT_21
-- TDS
-- VELM7700
-- WS2812
+For read-implementation notes and how to add a new sensor, see
+[Docu/README.md](README.md#sensors) and [Docu/dev_docu.md](dev_docu.md#-sensor-support).

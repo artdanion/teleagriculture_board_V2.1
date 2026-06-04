@@ -6,38 +6,40 @@ To build the teleAgriCulture Board V2.1 project follow these steps:
 
 1. Clone the repository to your local machine.
 2. Open the project folder (community/teleAgriCulture Board V2.1) in [VS Code](https://code.visualstudio.com) with the [PlatformIO](https://platformio.org) extension installed.
-3. Update the board credentials in `/include/board_credentials.h` with your own BoardID, API_KEY and LORA credentials.
-4. make sure that you choose the right lora-region build-flag in `platformio.ini` file
+3. Create `/include/board_credentials.h` with your own BoardID, API_KEY and LoRa credentials — copy `include/board_credentials.template.h` and fill in your values. See **[README_credentials.md](../README_credentials.md)** for the full workflow.
+4. Choose the matching lora-region environment when you build (`-e EU`, `US`, `AU`, `AS`, `JP`, `KR`, `IN`; see `platformio.ini`).
 5. Build and upload the project to your ESP32-S3 board.
 
 Once the project is uploaded to the board, a unique access point is created for each board. The SSID is printed to the Serial Monitor on boot and shown on the TFT display. See the [Accessing the Board](#accessing-the-board) section for details.
- 
+
 <mark>!! to build this project, take care that board_credentials.h is in the include folder (gets ignored by git)</mark>
 
 ## Accessing the Board
 
-Every board has a **unique SSID** derived from the last 6 hex characters of its MAC address:
+Each board names its WiFi APs after its MAC address, so they are **unique per board**.
+Both SSIDs use `XXXX` = the last 4 hex digits of the MAC, and the password `enter123`:
 
 ```
-SSID:      TAC-XXXXXX   (e.g. TAC-A3F7C2)
-Password:  enter123
+Config Portal AP:  TAC_config_XXXX   (e.g. TAC_config_A3F7)
+Dashboard AP:      TAC_dash_XXXX     (e.g. TAC_dash_A3F7)
+Password:          enter123
 ```
 
-The full SSID is printed to the Serial Monitor at boot and shown on the TFT display.  
-The same SSID is used for both the Config Portal and the Dashboard AP.
+The active SSID is printed to the Serial Monitor at boot and shown on the TFT display.
+_(Older firmware used static names shared by all boards: `TeleAgriCulture Board` / `Teleagriculture DB`.)_
 
 ### Config Portal
 
 Opens automatically on first boot, after a **double-reset**, or by holding the BOOT button for > 5 s.
 
-1. Connect your phone or laptop to `TAC-XXXXXX` / `enter123`
+1. Connect your phone or laptop to `TAC_config_XXXX` / `enter123`
 2. A captive portal opens automatically (or navigate to `http://192.168.4.1`)
 3. Select your WiFi network, enter credentials, configure upload settings
 4. Save — the board reboots and connects to your network
 
 ### Dashboard (sensor data + web UI)
 
-The board creates the same AP (`TAC-XXXXXX`) during normal operation for local access without a router.
+During normal operation (when not battery-powered) the board opens the `TAC_dash_XXXX` AP for local access without a router.
 
 | How to connect | Address |
 |---|---|
@@ -93,9 +95,9 @@ Sensor Value:     `sensorVector[i].measurements[j].value`
 
 ## Sensors
 
-The teleAgriCulture Board V2.1 supports a variety of sensors through its connectors. The currently implemented sensors are listed in the `SensorsImplemented` enum in `lib/init_TAC/src/def_Sensors.h`:
+The teleAgriCulture Board V2.1 supports a variety of sensors through its connectors. The currently implemented sensors are listed in the `SensorsImplemented` enum in `lib/init_TAC/src/def_Sensors.h`. For the canonical, up-to-date list see **[README.md – Implemented Sensors](../README.md#implemented-sensors)**.
 
---> VERSION 1.80 (31 sensors)
+The notes below cover the read-implementation details (I2C addresses, datasheet links):
 
 - BMP_280: A temperature and pressure sensor.
 - LEVEL: A water level sensor.

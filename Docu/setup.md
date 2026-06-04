@@ -15,8 +15,8 @@ Switch board into Config Mode (new boards start into config mode)
 Connect to board via WiFi (on your Mobile phone or Notebook)
 
 **WiFi Network Name (SSID):**
-- **Firmware v1.80+**: `TAC-XXXXXX` (e.g. `TAC-A1B2C3`) — unique per board, last 6 hex digits of MAC address
-- **Firmware v1.75 and earlier**: `TeleAgriCulture Board` (static SSID on all boards)
+- **Config Portal AP**: `TAC_config_XXXX` (e.g. `TAC_config_A1B2`) — unique per board, `XXXX` = last 4 hex digits of the MAC address
+- _Older firmware (v1.75 and earlier) used a static SSID on all boards: `TeleAgriCulture Board`_
 
 **Password**: `enter123`
 
@@ -35,7 +35,7 @@ Now you can change your board settings (WiFi Network, Upload, Sensors, Timezone.
 If you use the Update Option:
 
 >find the current compiled firmware for OTA upload (Board Setup on the Config Portal) here:
->[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) version 1.80
+>[current Firmware](https://gitlab.com/teleagriculture/community/-/tree/main/teleAgriCulture%20Board%20V2.1/Firmware) (current version 1.93)
 >
 >**If you are using LORA please choose the right Firmware for your location / lora module**
 >and you have to enter your credentials for LoRa on the Config Portal
@@ -60,6 +60,6 @@ there is also a section about integrated sensors.
 
 ## Implemented Sensors
 
-For a complete list of all implemented sensors with technical details, see [README.md - Implemented Sensors](../README.md#implemented-sensors) (30 sensors total)
+For a complete list of all implemented sensors with technical details, see [README.md - Implemented Sensors](../README.md#implemented-sensors).
 
 Quick list: ADS1115, BATTERY, BH_1745, BH_1750, BME_280, BMP_280, BMP_680, CAP_SOIL, CAP_GROOVE, DFR FLAME, DFR LIGHT, DFR LM35, DHT11, DHT22, DS18B20, LEVEL, LTR_390, MultiGasV1, MultiGasV2, PRE_LVL, RTCDS3231, SERVO, SHT_21, SOUND, SPF_WINDVANE, SPF_ANEMOMETER, TDS, UV_DFR, VEML7700, WS2812
