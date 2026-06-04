@@ -5,3 +5,4 @@
 .vscode/ipch
 .vscode/settings.json
 .include/board_credentials.h
+Boards_List.csv
