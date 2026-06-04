@@ -25,7 +25,7 @@
  *
 
 
-/*********************************** VERSION 1.92 ****************************
+/*********************************** VERSION 1.93 ****************************
 /*
  *
  * board credentials are in /include/board_credentials.h  (BoardID, API_KEY and LORA credentials)
@@ -34,8 +34,9 @@
  * ------> Config Portal opens after double reset or holding BooT button for > 5sec
  *____________________________________________________________
  *
- * Config Portal Access Point:   SSID: TAC-XXXX (unique per board, last 4 hex chars of MAC ->since v.1.85)
- *                               pasword: enter123
+ * WiFi Access Points are unique per board (XXXX = last 4 hex chars of MAC, since v.1.85):
+ *   Config Portal:  SSID: TAC_config_XXXX   password: enter123
+ *   Dashboard (AP): SSID: TAC_dash_XXXX     password: enter123
  *____________________________________________________________
  *
  *
@@ -947,7 +948,7 @@ void configButtonTask(void *parameter)
       }
       else
       {
-         // upButton released -> reset
+         // config button (LEFT_BUTTON_PIN) released -> reset
          pressed = false;
          pressStart = 0;
       }
