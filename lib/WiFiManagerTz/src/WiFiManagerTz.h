@@ -1403,6 +1403,13 @@ namespace WiFiManagerNS
     digitalWrite(SW_5V, HIGH);
     delay(200); // allow sensors on switched rails to power up before scanning
 
+    // Initialize the I2C bus before scanning. In the config-portal flow the bus
+    // is not begun elsewhere (and may have been Wire.end()'ed), so without this
+    // the scan blocks on an uninitialized peripheral when no pull-ups/sensors
+    // are present, hanging the "Setup Board" page.
+    Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ);
+    Wire.setTimeOut(50); // ms: don't block on a floating/stuck bus
+
     for (address = 1; address < 127; address++)
     {
       Wire.beginTransmission(address);
