@@ -346,6 +346,7 @@ the online [Docu Page](https://gitlab.com/teleagriculture/community/-/tree/main/
 - **DS18B20** — 1-Wire waterproof temperature sensor, supports multiple sensors on one bus
 - **HEART_RATE** — Gravity Heart Rate Monitor Sensor (SEN0203 based on AD8232), outputs BPM (analog)
 - **LEVEL** — analog water level sensor
+- **LIS331HH** — 3-axis linear accelerometer, ±6 g full-scale, outputs X / Y / Z in g (I2C 0x18 / 0x19)
 - **LTR_390** — UV index and ambient light sensor (I2C 0x53)
 - **MultiGasV1** — Grove Multichannel Gas Sensor V1 (I2C 0x04) — H₂, CO, NO₂, NH₃, C₄H₁₀, C₃H₈, CH₄, C₂H₅OH
 - **MultiGasV2** — Grove Multichannel Gas Sensor V2 (I2C 0x08) — same gas channels, updated hardware

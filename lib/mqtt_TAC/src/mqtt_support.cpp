@@ -154,6 +154,7 @@ void publishLiveTopics() {
 
   for (size_t i = 0; i < sensorVector.size(); ++i) {
     const Sensor &s = sensorVector[i];
+    if (s.sensor_name == "Battery") continue; // battery is not sent in LIVE mode
     for (int j = 0; j < s.returnCount; ++j) {
       const Measurement &m = s.measurements[j];
       if (m.data_name.length() == 0) continue;

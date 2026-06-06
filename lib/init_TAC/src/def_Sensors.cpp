@@ -111,6 +111,12 @@ ValueOrder getValueOrderFromString(String str)
     return SPEED;
   if (str == "BPM")
     return BPM;
+  if (str == "ACC_X")
+    return ACC_X;
+  if (str == "ACC_Y")
+    return ACC_Y;
+  if (str == "ACC_Z")
+    return ACC_Z;
 
   return NOT;
 }
@@ -779,5 +785,36 @@ const char *proto_sensors = R"([
         "data_name": "BPM"
       }
     ]
+  },
+  {
+    "sensor-id": 32,
+    "name": "LIS331HH",
+    "con_typ": "I2C",
+    "returnCount": 3,
+    "measurements": [
+      {
+        "value": 0.0,
+        "valueOrder": "ACC_X",
+        "unit": "g",
+        "data_name": "acc_x"
+      },
+      {
+        "value": 0.0,
+        "valueOrder": "ACC_Y",
+        "unit": "g",
+        "data_name": "acc_y"
+      },
+      {
+        "value": 0.0,
+        "valueOrder": "ACC_Z",
+        "unit": "g",
+        "data_name": "acc_z"
+      }
+    ],
+    "addr_num": 2,
+    "possible_i2c_add": {
+      "default": "0x18",
+      "alt_1": "0x19"
+    }
   }
 ])";

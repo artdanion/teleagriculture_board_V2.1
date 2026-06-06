@@ -202,6 +202,9 @@ _Grouped overview. For the canonical, up-to-date list see [README.md – Impleme
 - **TDS**: Total dissolved solids sensor for water quality
 - **DFR LM35**: Precision temperature sensor
 
+#### Motion Sensors
+- **LIS331HH**: 3-axis linear accelerometer (±6 g), X/Y/Z output in g
+
 #### Additional Components
 - **WS2812**: RGB LED strip control for visual indicators
 

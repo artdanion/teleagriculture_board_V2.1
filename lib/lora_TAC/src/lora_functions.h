@@ -44,6 +44,9 @@ extern const unsigned TX_INTERVAL;
 extern bool loraJoinFailed;
 extern bool loraDataTransmitted;
 
+// Probe the LoRa SPI bus for an SX127x radio (reads RegVersion, expects 0x12).
+bool loRaModulePresent(void);
+
 void os_getArtEui(u1_t *buf);
 void os_getDevEui(u1_t *buf);
 void os_getDevKey(u1_t *buf);

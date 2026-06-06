@@ -200,12 +200,46 @@ void setup()
    if (!useBattery)
       webpage = true;
 
+   // LoRa fallback: if LoRa is selected but no credentials are stored or no
+   // LoRa module is attached, switch back to WiFi mode for this session.
+   if (upload == "LORA")
+   {
+      bool credsOk = (OTAA_DEVEUI != "0000000000000000") &&
+                     (OTAA_APPKEY != "00000000000000000000000000000000");
+      bool moduleOk = loRaModulePresent();
+
+      if (!credsOk || !moduleOk)
+      {
+         Serial.printf("LoRa unavailable (credentials: %s, module: %s) -> switching to WiFi\n",
+                       credsOk ? "ok" : "missing",
+                       moduleOk ? "detected" : "not found");
+         upload = "WIFI";
+
+         if (useDisplay)
+         {
+            tft->fillScreen(ST7735_BLACK);
+            tft->setTextColor(ST7735_ORANGE);
+            tft->setFont(&FreeSans9pt7b);
+            tft->setTextSize(1);
+            tft->setCursor(5, 40);
+            tft->print("No LoRa -");
+            tft->setCursor(5, 60);
+            tft->print("using WiFi");
+            delay(1500);
+         }
+      }
+   }
+
    connectIfWifi();
    setupLoRaIfNeeded();
    setupSDCardIfNeeded();
    setupMQTTIfNeeded();
    setupOSCIfNeeded();
    setupWebpageIfNeeded();
+
+   // continuous pulse sampling, only in LIVE mode and only if a HEART_RATE sensor is configured
+   if (upload == "LIVE" && pulseSensorConfiguredPin() >= 0)
+      startPulseSensorTask();
 }
 
 void loop()
@@ -1341,9 +1375,13 @@ void configModeCallback(WiFiManager *myWiFiManager)
       tft->setTextColor(ST7735_WHITE);
       tft->setTextSize(1);
       tft->setCursor(5, 73);
-      tft->print("SSID:");
-      tft->setCursor(5, 85);
+      tft->print("SSID: ");
       tft->print(myWiFiManager->getConfigPortalSSID());
+      tft->setCursor(5, 85);
+      tft->setTextColor(ST7735_ORANGE);
+      tft->print("Kit ID: ");
+      tft->print(boardID);
+      tft->setTextColor(ST7735_WHITE);
       tft->setCursor(5, 95);
       tft->print("IP: ");
       tft->print(WiFi.softAPIP());

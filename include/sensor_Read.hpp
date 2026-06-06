@@ -52,6 +52,7 @@
 #include "drivers/DSTherm.h"
 #include "utils/Placeholder.h"
 #include <GravityTDS.h>
+#include <pulse_sensor.hpp> // PulseSensor beat detection (continuous sampling task, LIVE mode)
 
 #define SPF_ANEMOMETER_MEASURE_INTERVAL 5000  // ms measurement window
 #define SPF_ANEMOMETER_KMH_PER_HERTZ    2.4f  // km/h per Hz (SparkFun Weather Meter Kit)
@@ -305,6 +306,82 @@ void readI2C_Connectors()
                 LOGW("BME280: NaN — not added to sensor vector");
             else
                 if (hasNaN(newSensor))
+                LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
+            else
+                sensorVector.push_back(newSensor);
+        }
+        break;
+
+        case LIS331HH:
+        {
+            String addrStr = allSensors[LIS331HH].possible_i2c_add[I2C_con_table[j].addrIndex];
+            uint8_t addr = (uint8_t)strtol(addrStr.c_str(), NULL, 0);
+
+            LOGI("LIS331HH @ 0x%02X - connecting...", addr);
+
+            // WHO_AM_I (0x0F) must read 0x32
+            Wire.beginTransmission(addr);
+            Wire.write(0x0F);
+            if (Wire.endTransmission(false) != 0)
+            {
+                LOGE("LIS331HH no ACK @ 0x%02X - check wiring/address (0x18 or 0x19)", addr);
+                break;
+            }
+            Wire.requestFrom((int)addr, 1);
+            uint8_t whoami = Wire.available() ? Wire.read() : 0;
+            if (whoami != 0x32)
+            {
+                LOGE("LIS331HH WHO_AM_I=0x%02X (expected 0x32) @ 0x%02X", whoami, addr);
+                break;
+            }
+
+            // CTRL_REG1 (0x20): normal power mode, 50 Hz ODR, X/Y/Z enabled
+            Wire.beginTransmission(addr);
+            Wire.write(0x20);
+            Wire.write(0x27);
+            Wire.endTransmission();
+            // CTRL_REG4 (0x23): BDU=1, full-scale ±6 g (FS=00)
+            Wire.beginTransmission(addr);
+            Wire.write(0x23);
+            Wire.write(0x80);
+            Wire.endTransmission();
+            delay(20); // let the first conversion complete
+
+            // Burst-read OUT_X_L..OUT_Z_H (0x28..0x2D); MSB of subaddress = auto-increment
+            Wire.beginTransmission(addr);
+            Wire.write(0x28 | 0x80);
+            if (Wire.endTransmission(false) != 0)
+            {
+                LOGE("LIS331HH: read setup failed @ 0x%02X", addr);
+                break;
+            }
+            Wire.requestFrom((int)addr, 6);
+            if (Wire.available() < 6)
+            {
+                LOGE("LIS331HH: short read @ 0x%02X", addr);
+                break;
+            }
+            uint8_t b[6];
+            for (int k = 0; k < 6; k++)
+                b[k] = Wire.read();
+
+            int16_t rawX = (int16_t)((b[1] << 8) | b[0]);
+            int16_t rawY = (int16_t)((b[3] << 8) | b[2]);
+            int16_t rawZ = (int16_t)((b[5] << 8) | b[4]);
+
+            // data is 12-bit left-justified -> >> 4; ±6 g => 6/2048 g per LSB
+            const float lsb_g = 6.0f / 2048.0f;
+            Sensor newSensor = allSensors[LIS331HH];
+            newSensor.measurements[0].value = (rawX >> 4) * lsb_g;
+            newSensor.measurements[1].value = (rawY >> 4) * lsb_g;
+            newSensor.measurements[2].value = (rawZ >> 4) * lsb_g;
+
+            LOGI("LIS331HH: x=%.3f y=%.3f z=%.3f g",
+                 (float)newSensor.measurements[0].value,
+                 (float)newSensor.measurements[1].value,
+                 (float)newSensor.measurements[2].value);
+
+            if (hasNaN(newSensor))
                 LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());
             else
                 sensorVector.push_back(newSensor);
@@ -1126,81 +1203,12 @@ void readADC_Connectors()
 
         case HEART_RATE:
         {
-            int heartRatePin;
-            if (i == 0)
-            {
-                heartRatePin = ANALOG1;
-            }
-            if (i == 1)
-            {
-                heartRatePin = ANALOG2;
-            }
-            if (i == 2)
-            {
-                heartRatePin = ANALOG3;
-            }
-
-            pinMode(heartRatePin, INPUT);
-
-            // Improved heartbeat detection based on AD8232 signal processing
-            // Similar to HeartSpeed library but without AVR-specific timers
-
-            const int SAMPLE_SIZE = 100; // Buffer size for samples
-            static int samples[SAMPLE_SIZE] = {0};
-            static int sampleIndex = 0;
-            static unsigned long lastSampleTime = 0;
-            static unsigned long lastBeatTime = 0;
-            static int beatCount = 0;
-            static float bpm = 70.0; // Default BPM
-            static int threshold = 512; // Adaptive threshold
-            static bool wasAboveThreshold = false;
-
-            unsigned long now = millis();
-
-            // Sample at ~100Hz (every 10ms)
-            if (now - lastSampleTime >= 10) {
-                int rawValue = analogRead(heartRatePin);
-
-                // Simple moving average filter
-                samples[sampleIndex] = rawValue;
-                sampleIndex = (sampleIndex + 1) % SAMPLE_SIZE;
-
-                // Calculate average of last few samples
-                int sum = 0;
-                for (int j = 0; j < SAMPLE_SIZE; j++) {
-                    sum += samples[j];
-                }
-                int filteredValue = sum / SAMPLE_SIZE;
-
-                // Adaptive threshold based on signal
-                int minVal = 4095, maxVal = 0;
-                for (int j = 0; j < SAMPLE_SIZE; j++) {
-                    if (samples[j] < minVal) minVal = samples[j];
-                    if (samples[j] > maxVal) maxVal = samples[j];
-                }
-                threshold = (minVal + maxVal) / 2 + (maxVal - minVal) / 4; // 75% of range
-
-                // Peak detection
-                bool isAboveThreshold = filteredValue > threshold;
-                if (isAboveThreshold && !wasAboveThreshold) {
-                    // Rising edge - potential beat
-                    unsigned long beatInterval = now - lastBeatTime;
-                    if (beatInterval > 300 && beatInterval < 2000) { // Reasonable range
-                        beatCount++;
-                        if (beatCount >= 3) { // Average over last 3 beats
-                            bpm = 60000.0 / beatInterval;
-                            beatCount = 1; // Reset but keep last
-                        }
-                        lastBeatTime = now;
-                    }
-                }
-                wasAboveThreshold = isAboveThreshold;
-
-                lastSampleTime = now;
-            }
-
+            // Beat detection runs continuously in pulseSensorTask() (LIVE mode);
+            // here we just read its latest result. NaN when no task is running or
+            // no recent beat was seen, so it is dropped instead of reporting a
+            // misleading default value.
             Sensor newSensor = allSensors[HEART_RATE];
-            newSensor.measurements[0].value = bpm;
+            newSensor.measurements[0].value = pulseSensorBPM();
 
             if (hasNaN(newSensor))
                 LOGW("%s: NaN — not added to sensor vector", newSensor.sensor_name.c_str());

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <lora_functions.h>
 
+#include <SPI.h>
 #include <driver/rtc_io.h>
 #include <lmic.h>
 #include <hal/hal.h>
@@ -9,6 +10,42 @@
 const unsigned TX_INTERVAL = 30U;
 bool loraJoinFailed = false;
 bool loraDataTransmitted = false;
+
+// Probe the LoRa SPI bus for an SX127x radio before LMIC is initialized.
+// The LoRa module sits on the default ESP32-S3 FSPI pins (the same bus LMIC
+// later uses via SPI.begin()). We pulse the reset line and read RegVersion
+// (0x42); SX1276/77/78/79 answer with 0x12, an empty socket reads 0x00/0xFF.
+bool loRaModulePresent(void)
+{
+   // The LoRa module shares the switched 3V3 rail -> make sure it is powered
+   digitalWrite(SW_3V3, HIGH);
+   delay(100);
+
+   // Reset pulse (SX127x: RST low > 100us, then high, settle ~5ms)
+   pinMode(LORA_RST, OUTPUT);
+   digitalWrite(LORA_RST, LOW);
+   delay(2);
+   digitalWrite(LORA_RST, HIGH);
+   delay(10);
+
+   pinMode(LORA_CS, OUTPUT);
+   digitalWrite(LORA_CS, HIGH);
+
+   SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);
+
+   SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+   digitalWrite(LORA_CS, LOW);
+   SPI.transfer(0x42 & 0x7F); // RegVersion, read access (MSB = 0)
+   uint8_t version = SPI.transfer(0x00);
+   digitalWrite(LORA_CS, HIGH);
+   SPI.endTransaction();
+
+   SPI.end(); // release the bus so LMIC's hal_spi_init() can re-claim it
+
+   Serial.printf("LoRa module probe: RegVersion = 0x%02X\n", version);
+
+   return (version == 0x12);
+}
 
 // Lora functions
 void os_getArtEui(u1_t *buf)
@@ -358,6 +395,16 @@ void lora_sendData(void)
                Serial.print(k);
                Serial.print(" Value: ");
                Serial.println(static_cast<uint16_t>(round(sensorVector[i].measurements[j].value)));
+               break;
+            case ACC_X:
+            case ACC_Y:
+            case ACC_Z:
+               message.addRawFloat(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
+               Serial.print(sensorVector[i].measurements[j].data_name);
+               Serial.print(": #");
+               Serial.print(k);
+               Serial.print(" Value: ");
+               Serial.println(static_cast<float>(round(sensorVector[i].measurements[j].value * 100) / 100.0));
                break;
             }
          }

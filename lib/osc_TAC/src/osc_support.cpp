@@ -148,6 +148,8 @@ void publishSensorVectorAsOSC(const String &baseAddress)
   {
     const Sensor &s = sensorVector[i];
 
+    if (s.sensor_name == "Battery") continue; // battery is not sent in LIVE mode
+
     const int cap = arrlen(s.measurements); // 8
     int nTake     = s.returnCount;
     if (nTake < 0)  nTake = 0;
