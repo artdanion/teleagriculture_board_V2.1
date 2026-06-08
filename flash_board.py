@@ -14,8 +14,16 @@ Examples:
     python flash_board.py 1014                 # build + upload board 1014
     python flash_board.py 1014 --port COM7     # pin the serial port
     python flash_board.py 1014 --env US        # override the LoRa region/env
+    python flash_board.py 1014 --erase         # full chip erase, then flash (see note)
     python flash_board.py 1014 --no-upload     # only generate header + build
     python flash_board.py 1014 --dry-run       # show what would happen, do nothing
+
+Re-flashing a board with a DIFFERENT Kit ID:
+    The board stores its config (boardID, API key, WiFi, sensors) in flash
+    (SPIFFS + NVS). A normal upload does NOT touch those partitions, so the
+    OLD stored boardID overrides the newly compiled one at runtime - the board
+    keeps its previous identity. Use --erase to wipe stored config first so the
+    new Kit ID actually takes effect (this also clears the saved WiFi network).
 """
 
 import argparse
@@ -168,6 +176,10 @@ def main():
     ap.add_argument("kit_id", help="Kit ID from Boards_List.csv, e.g. 1014")
     ap.add_argument("--port", help="Serial upload port (e.g. COM7). Default: PIO autodetect.")
     ap.add_argument("--env", help="Override PlatformIO env / LoRa region (EU, US, AU, AS, JP, KR, IN).")
+    ap.add_argument("--erase", action="store_true",
+                    help="Full chip erase before flashing. Wipes stored config + WiFi so a "
+                         "different Kit ID actually takes effect (required when re-flashing a "
+                         "board with a new ID).")
     ap.add_argument("--no-upload", action="store_true", help="Generate header and build, but do not upload.")
     ap.add_argument("--dry-run", action="store_true", help="Show the plan without touching files or flashing.")
     args = ap.parse_args()
@@ -180,14 +192,39 @@ def main():
     print(f"   DEVEUI : {board.get('deveui') or '(none)'}")
     print(f"   MQTT   : {board.get('mqtt_ip') or DEFAULT_MQTT_IP}")
     print(f"   Port   : {args.port or 'autodetect'}")
+    print(f"   Erase  : {'YES - wipes stored config + WiFi' if args.erase else 'no'}")
 
     target = "build (no upload)" if args.no_upload else "upload"
     if args.dry_run:
+        if args.erase:
+            print(f"-- dry-run: would run PlatformIO target 'erase' --")
         print(f"-- dry-run: would render header and run PlatformIO target '{target}' --")
         return
 
     render_header(board)
     print(f"   Wrote  : {HEADER_PATH.relative_to(ROOT)}")
+
+    # A board flash bakes in real credentials - do NOT let copyFirmware.py
+    # overwrite the credential-free release binaries in Firmware/.
+    child_env = os.environ.copy()
+    child_env["TAC_SKIP_RELEASE_COPY"] = "1"
+
+    def run_pio(cmd):
+        print(f"-- running: {' '.join(cmd)}")
+        try:
+            return subprocess.run(cmd, env=child_env).returncode
+        except FileNotFoundError:
+            sys.exit("ERROR: 'pio' not found. Run from a terminal where PlatformIO is on PATH "
+                     "(or use the PlatformIO IDE terminal).")
+
+    # Full chip erase first, so stale stored config can't override the new Kit ID.
+    if args.erase:
+        erase_cmd = ["pio", "run", "-e", env, "-t", "erase"]
+        if args.port:
+            erase_cmd += ["--upload-port", args.port]
+        rc = run_pio(erase_cmd)
+        if rc != 0:
+            sys.exit(rc)
 
     cmd = ["pio", "run", "-e", env]
     if not args.no_upload:
@@ -195,18 +232,7 @@ def main():
         if args.port:
             cmd += ["--upload-port", args.port]
 
-    # A board flash bakes in real credentials - do NOT let copyFirmware.py
-    # overwrite the credential-free release binaries in Firmware/.
-    child_env = os.environ.copy()
-    child_env["TAC_SKIP_RELEASE_COPY"] = "1"
-
-    print(f"-- running: {' '.join(cmd)}")
-    try:
-        result = subprocess.run(cmd, env=child_env)
-    except FileNotFoundError:
-        sys.exit("ERROR: 'pio' not found. Run from a terminal where PlatformIO is on PATH "
-                 "(or use the PlatformIO IDE terminal).")
-    sys.exit(result.returncode)
+    sys.exit(run_pio(cmd))
 
 
 if __name__ == "__main__":

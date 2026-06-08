@@ -43,12 +43,18 @@ If you have the (non-public) `Boards_List.csv`, the helper script does everythin
 python flash_board.py 1014              # build + upload board 1014
 python flash_board.py 1014 --port COM7  # pin the serial port
 python flash_board.py 1014 --env US     # override the LoRa region / env
+python flash_board.py 1050 --erase      # re-flash with a NEW Kit ID (wipes stored config)
 python flash_board.py 1014 --no-upload  # generate header + build only
 python flash_board.py 1014 --dry-run    # show the plan, change nothing
 ```
 
 The script regenerates `include/board_credentials.h` on every run, so don't keep
 manual edits there if you also use the script.
+
+> **Re-flashing a board with a different Kit ID?** You must use `--erase`, or the
+> board's stored config overrides the new ID at runtime. See the full walkthrough,
+> plus how to open the PlatformIO terminal on Mac/Windows, in
+> [`README_flashing.md`](README_flashing.md).
 
 ---
 
